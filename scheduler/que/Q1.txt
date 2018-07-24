@@ -1,0 +1,128 @@
+1:对于makefile中生成的语法, 较为不熟悉, 
+	生成动态库， 静态库的语法, 子目录编译过程
+	dir:part1
+		生成静态库的方式:
+			@1:
+				将所有的*.o文件(除了main.o外)的文件进行生成.
+					gcc -c *.c
+			@2:
+				用ar工具将其打包到一个新的库中(或增加到已经存在的库中)
+				ar工具：
+				{
+					创建新的静态库
+						ar	-rcs	*.a	*.o
+					查看静态库的成员
+						ar	-t	*.a
+					追加成员到静态库的尾部
+						ar	-qs	*.a	*.o
+					更新静态库成员
+						ar	-rus	*.a	*.o
+					从静态库删除指定成员
+						ar	-ds	*.a	*.o
+				}
+				用命令将其追加到打包的库函数中.
+				ar	-rcs	*.a	*.o或者
+				ar	-qs	*.a	*.o
+				将@1中的*.o打包到*.a中
+				ar -rcs libmy.a	*.a
+
+			@3:
+				用编译器进行连接所对应的库.
+				gcc/g++相关的命令:
+				{
+					1>预编译Pre_Processing
+					2>编译Compiling
+					3>汇编Assembling
+					4>连接Linking
+						#1
+							-c:指编译, 不连接, 生成目标文件*.o
+						#2
+							-S:只编译, 不汇编, 生成汇编代码*.S
+						#3
+							-E:只进行预处理/预编译, 不进行其他的处理.
+						#4
+							-0 file:把输出文件到file里
+						#5
+							-g:可在执行程序中包含标准调试信息(在编译阶段加入);
+						#6
+							-v:打印时编译器内部编译各过程的命令行信息和编译器版本;
+						#7
+							-I dir:在头文件中搜索路径列表中添加dir目录
+						#8
+							-L dir:在库文件的搜索路径中添加dir目录
+						#9
+							-static:连接静态库(静态库也可以用动态库连接方式链接)
+						#10
+							-llibrary:连接名为library的库文件(显示指定需要连接的动态库文件)
+
+					
+					gcc警告和出错选项:
+						$1
+							-ansi:支持符合ANSI标准的C程序
+						$2
+							-pedantic:允许发出ANSI C标准所列出的全部警告信息
+						$3
+							-prdantic-error:允许发出ANSI C标准所列出的全部错误信息
+						$4
+							-w:关闭所有警告
+						$5
+							-Wall:允许发出gcc提供的所有有用的报警信息.
+						$6
+							-werror:把所有的警告信息转化为错误信息, 并在告警信息时发出终止编译过程
+
+
+					gcc优化选项:
+						在编译的时候 “ -0n ”来控制优化代码的生成, 其中n是一个优化整数, 0~3
+				}
+				在进行生成目标的有两种方式
+					一种是在生成目标文件的时候直接指明库名
+						gcc -o main main.o libmy.a
+					二种是指定搜索库的目录, 并指明库名
+						gcc -o main main.o -Ldir -lmy
+				运行的时候:
+						就直接进行运行. ./main
+			@4:
+				在makefile文件中手写的时候:
+					!1:
+						找不到库的路径
+						[log] make                                                                            15:13:51 
+						g++ -c -I. -g test_log.cpp
+						g++ -o test_log test_log.o -L. -lmy
+						/usr/bin/ld: cannot find -lmy
+						collect2: error: ld returned 1 exit status
+						make: *** [test_log] Error 1
+					解决：
+						在生成目标文件中的时候: 后面将库的名字也生成
+						test_log:test_log.o $(MYLIB)
+							$(CC) -o test_log test_log.o -L. -lmy
+						因为库没办法进行生成所以会出现这类问题.
+		生成动态库的方法:
+				%1:
+					生成库文件
+					g++ -fPIC -shared -o libtest.so test_a.cpp test_b.cpp
+					其中-shared是指明编译成动态库
+					-fPIC 表示编译为位置独立代码, 不用此选项的话编译后的代码是位置相关的所以动态载入
+				的时候, 通过代码的拷贝来满足不同进程的需要, 而不能达到正真代码段共享的目的.
+				%2:
+					指明运行的时候所依赖的库名
+					g++ -o test_show test_show.cpp -L. -ltest
+				%3:
+					将库的路径加到环境变量中, 
+					export LD_LIBRARY_PATH=.:$LD_LIBRARY_PATH
+					是将当前路径加载到其寻找库的路径中.
+
+					或者, 将库放置到/usr/lib目录下, 并ldconfig(更新寻库的缓存)
+					sudo cp libtest.so /usr/bin/
+					sudo ldconfig
+				%4：
+					运行程序,得到结果
+				%5:
+					在makefile中使用动态库
+					和静态库类似, 但出现了一个问题：
+						在对其将库的路径加到环境变量中是, 出现了问题.
+								没有加入进去??
+	子目录编译过程:
+			在makefile文件中:
+				{cd dir;$(MAKE)clean}	来进行子目录编译文件, 
+				如果可以: 再将库文件其打包成库复制到目的文件夹中,
+				并进行运行, 生成库方法和移动相似,

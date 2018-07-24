@@ -1,0 +1,35 @@
+all:test_log
+
+#whilch compiler
+CC=g++
+
+#where are include file kept
+INCLUDE=.
+
+#options for develoption
+CFLAGS=-g
+
+#local libraries
+MYLIB=libmy.a
+
+#Mcheck
+Mcheck=vargrind --tool=memcheck
+
+test_log:test_log.o $(MYLIB)
+	$(CC) -o test_log test_log.o -L. -lmy
+	mv $(MYLIB) ../mylib
+
+$(MYLIB):log.o
+	ar cqs $(MYLIB) log.o
+
+test_log.o:test_log.cpp
+	$(CC) -c -I$(INCLUDE) $(CFLAGS) test_log.cpp
+
+log.o:log.cpp
+	$(CC) -c -I$(INCLUDE) $(CFLAGS) log.cpp
+
+clean:
+	rm -rf *.o && rm -rf test_log &&rm -rf *.a && rm -rf *.txt
+
+run:
+	$(Mcheck) ./test_log

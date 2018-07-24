@@ -1,0 +1,23 @@
+#1:
+	对于#include"location/....h"和g++ -I(....)的方式的选定:
+这两种方式都可以进行运行, 一边为直接选定所包含的文件的位置,
+一个是,将其目录直接包含, 让程序自己去找.
+
+#2:
+	对于目录的编译过程的话: 最终生成的文件位置, 仍是主程序
+所在的位置, 除非自己显示定义位置.
+
+#3:
+	对于在.c和.cpp混合编程的过程中. 再许多隐式转换的过程中
+将会出现许多问题.
+		$1:
+		warning: deprecated conversion from string constant to ‘char*’ [-Wwrite-strings]
+	因为传入的字符串是无法修改的, 
+	CJSON_PUBLIC(cJSON *) cJSON_Parse(const char *value)
+	因此会出现问题
+		解决办法方式:
+			将chars用 const修改的话讲不会出现问题。
+		$2:关于json的测试                                                                                             
+		     cat object.json | jq
+			 cat object.json | python -m json.tool
+
