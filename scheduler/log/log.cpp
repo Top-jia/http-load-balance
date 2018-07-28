@@ -23,7 +23,7 @@ void Logger::WriteFile(bool errno_level, int errno_num, std::string location){
 	std::string cur_time = GetCurTime();
 	std::string error_info = cur_time + std::string(buffer);
 	
-	int fd = open(log_place.c_str(), O_CREAT | O_WRONLY | O_APPEND);
+	int fd = open(log_place.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0644);
 	if(fd <= 0){
 		std::cout << "Logger::WriteFile_open failed errno = " << errno \
 			<< " stderror(errno) = "<< strerror(errno) << std::endl;

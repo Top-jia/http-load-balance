@@ -29,6 +29,7 @@ $(location)$(MYLIB):scheduler.o
 	ar qs $(location)$(MYLIB) scheduler.o
 	(cd bstage; $(MAKE))
 	(cd sepoll;$(MAKE))
+	(cd json;$(MAKE))
 
 main.o:main.cpp 
 	$(CC) -c main.cpp $(CFLAGS) -I $(INCLUDE)
@@ -44,3 +45,4 @@ clean:
 	(cd log;$(MAKE) clean)
 	(cd bstage;$(MAKE) clean)
 	(cd sepoll;$(MAKE) clean)
+	(cd json;$(MAKE) clean)

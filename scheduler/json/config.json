@@ -1,0 +1,33 @@
+{
+	"scheduler_methon":{
+		"轮询":			"Round Robin",
+		"加权轮询":		"Weighted Round Robin",
+		"最少连接":		"Lease Connection",
+		"一致性hash":	"consistent hash"
+	},
+
+	"host_info":{
+		"ip":			"127.0.0.1",
+		"port":			7800
+	},
+
+	"ser_info":[
+		
+		{
+			"ip":		"127.0.0.1",
+			"port":		7901
+		},
+
+		{
+			"ip":		"127.0.0.1",
+			"port":		7902
+		},
+
+		{
+			"ip":		"127.0.0.1",
+			"port":		7903
+		}
+	],
+
+	"default_methon":	"Round Robin"
+}

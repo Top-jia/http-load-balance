@@ -21,3 +21,55 @@
 		     cat object.json | jq
 			 cat object.json | python -m json.tool
 
+
+part_4:
+	dynamic library | 读json
+part_5:
+	读配置json | 写配置json
+../part_5:
+
+gold:
+		json:完成加入
+		log: 加锁
+		thread: 初步
+	config.json:
+{
+			"scheduler_methon":{
+				"轮询":"Round Robin",
+				"加权轮询":"Weighted Round Robin",
+				"最少连接":"Lease Connection",
+				"一致性hash":"consistent hash"
+			},
+			"host_info":{
+				"ip":"127.0.0.1",
+				"port":7800
+			},
+
+			"ser_info":{
+				{
+					"ip":"127.0.0.1",
+					"port":7900
+				},
+
+				{
+					"ip":"127.0.0.1",
+					"port":7901
+
+				},
+
+				{
+					"ip":"127.0.0.1",
+					"port":7902
+				}
+			},
+
+		"default_methon":"Round Robin"
+}
+
+Json.hpp:
+		class Sinfo
+		class json
+Json.cpp:
+		....
+makefile
+		....

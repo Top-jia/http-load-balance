@@ -1,0 +1,29 @@
+{
+	"name":	"王小二",
+	"age":	25.2,
+	"birthday":	"1990-01-01",
+	"school":	"蓝翔",
+	"major":	["理发", "挖掘机"],
+	"has_girlfriend":	false,
+	"grade":	[73.8, 23.5, 89.1],
+	"car":	false,
+	"house":	false,
+	"grade_pass":	[{
+			"math":	true
+		}, {
+			"PE":	false
+		}, {
+			"English":	true
+		}],
+	"comment":	"this is a comment",
+	"employ":	[{
+			"firstname":	"Bill",
+			"lastname":	"Gates"
+		}, {
+			"firstname":	"Georeg",
+			"lastname":	"Bush"
+		}, {
+			"firstname":	"Thomas",
+			"lastname":	"carter"
+		}]
+}

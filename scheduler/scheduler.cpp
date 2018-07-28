@@ -3,7 +3,15 @@
 /*
  *	初始化相关调度器的ip和端口
  * */
-Scheduler::Scheduler():ip("127.0.0.1"), port(7988), bstage(log), sepoll(log){
+Scheduler::Scheduler():bstage(log), sepoll(log){
+	
+	Json json;
+	json.ParseConfigure();
+	sche_info = json.GetSche_info();
+	for(int i = 0; i < SER_NUM; i++){
+		ser_info[i] = json.GetSer_info(i);
+	}
+	methon = json.GetMethon();
 	memset(sepoll_events, '\0', MAX_EVENT_NUM * sizeof(struct epoll_event));
 }
 
@@ -22,12 +30,12 @@ void Scheduler::CreateLink(){
 	struct sockaddr_in sche;
 	memset(&sche, '\0', sizeof(sche));
 	sche.sin_family = AF_INET;
-	inet_pton(AF_INET, ip.c_str(), &sche.sin_addr);
-	sche.sin_port = htons(port);
+	inet_pton(AF_INET, sche_info.GetIP().c_str(), &sche.sin_addr);
+	sche.sin_port = htons(sche_info.GetPort());
 
 	int binder = bind(scheduler_fd, (struct sockaddr*)&sche, sizeof(sche));
 	assert(binder != -1);
-	binder = listen(scheduler_fd, 5);
+	binder = listen(scheduler_fd, 5);//最大值为128???
 	assert(binder != -1);
 }
 
@@ -122,7 +130,7 @@ void Scheduler::Run(){
 	}
 }
 /*
- * void Scheduler::Run(){
+ * void Scheduler::Run() : 0{
 	
 	struct sockaddr_in scheduler_cli;
 	socklen_t cli_len = sizeof(scheduler_cli);

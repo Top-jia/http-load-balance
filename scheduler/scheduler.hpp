@@ -20,18 +20,23 @@
 #include"./log/log.hpp"
 #include"./bstage/bstage.hpp"
 #include"./sepoll/sepoll.hpp"
+#include"./json/Json.hpp"
 
 #define MAX_EVENT_NUM	1024
 #define BUFF_SIZE	127
+#define SER_NUM		3
 #define _GUN_SOURCE
+
 typedef  int FD;
 
 class Scheduler{
-		std::string ip;
-		int port;
 		Logger log;
 		Bstage bstage;
-		
+
+		Sinfo sche_info;
+		Sinfo ser_info[SER_NUM];
+		std::string methon;
+
 		Sepoll sepoll;
 		struct epoll_event sepoll_events[MAX_EVENT_NUM];
 		FD  scheduler_fd;
