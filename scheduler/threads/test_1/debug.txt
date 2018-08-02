@@ -1,0 +1,10 @@
+对于多线程的调试：
+		info threads:
+				显示当前可调式的所有线程, 
+		thread id:
+				调试目标id
+		set scheduler-locking [off|on|step]:
+				默认调试下: 是被调试线程运行外, 其他线程也会运行,
+				off:	所有线程都运行,(默认值)
+				on :	只有当前线程执行,
+				step:	单步执行的时候, 只有当前线程运行.

@@ -21,7 +21,7 @@ INCLUDE=.
 #--------------------------------------
 
 main:main.o $(location)$(MYLIB)
-	$(CC) -o main main.o -L$(location) -lmy
+	$(CC) -o main main.o -L$(location) -lmy -lpthread
 
 $(location)$(MYLIB):scheduler.o
 	mkdir -p $(location)
@@ -30,9 +30,10 @@ $(location)$(MYLIB):scheduler.o
 	(cd bstage; $(MAKE))
 	(cd sepoll;$(MAKE))
 	(cd json;$(MAKE))
+	(cd threads;$(MAKE))
 
 main.o:main.cpp 
-	$(CC) -c main.cpp $(CFLAGS) -I $(INCLUDE)
+	$(CC) -c main.cpp $(CFLAGS) -I $(INCLUDE) 
 
 scheduler.o:scheduler.cpp
 	$(CC) -c scheduler.cpp $(CFLAGS) -I $(INCLUDE)
@@ -46,3 +47,4 @@ clean:
 	(cd bstage;$(MAKE) clean)
 	(cd sepoll;$(MAKE) clean)
 	(cd json;$(MAKE) clean)
+	(cd threads;$(MAKE) clean)

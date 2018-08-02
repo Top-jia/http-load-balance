@@ -11,8 +11,14 @@ Scheduler::Scheduler():bstage(log), sepoll(log){
 	for(int i = 0; i < SER_NUM; i++){
 		ser_info[i] = json.GetSer_info(i);
 	}
+
 	methon = json.GetMethon();
 	memset(sepoll_events, '\0', MAX_EVENT_NUM * sizeof(struct epoll_event));
+
+	int pipe_return = pipe2(pipe_fd, O_NONBLOCK);
+	if(pipe_return != 0){
+		log.WriteFile(true, errno, "Scheduler::Scheduler() pipe2 failed");
+	}
 }
 
 /*
@@ -42,15 +48,63 @@ void Scheduler::CreateLink(){
 /*
  *	运行相关的程序
  * */
+/*
+void Scheduler::Run(){
+	
+	 //		加入管道的描述符到主线程的epoll中
+	 //并对其事件进行写入, (当有连接请求的时候)可写事件
+	 
+	Threadpool pool(SER_NUM, pipe_fd[1]);
+	sepoll.setnonblocking(pipe_fd[1]);
+	sepoll.addfd(pipe_fd[1]);
+
+	char fd_buffer[BUFF_SIZE/10];
+	memset(fd_buffer, '\0', BUFF_SIZE/10);
+
+	struct epoll_event event;
+	event.data.fd = pipe_fd[1];
+	event.events = EPOLLET | EPOLLRDHUP;
+	sepoll.modfd(pipe_fd[1], &event);
+	while(true){
+		int epoll_return = epoll_wait(sepoll.getFD(), sepoll_events, MAX_EVENT_NUM, -1);
+		if(epoll_return == -1){
+			log.WriteFile(true, errno, "Scheduler::Run epoll_wait failed");
+		}
+		else if(epoll_return == 0){
+			log.WriteFile(false, 0, "Scheduler::Run epoll_Wait failed epoll_return = 0");
+			continue;
+		}
+		else{
+			for(int i = 0; i < epoll_return; i++){
+				int fd = sepoll_events[i].data.fd;
+				if(fd == scheduler_fd){
+					struct sockaddr_in client;
+					socklen_t cli_len = sizeof(client);
+					memset(&client, '\0', cli_len);
+					int new_fd = accept(fd, (struct sockaddr*)&client, &cli_len);
+					if(new_fd == -1){
+						log.WriteFile(true, errno, "Scheduler::Run accept failed ");
+					}
+					sprintf(fd_buffer, "%d", new_fd);
+				}
+				if(sepoll_events[i].events & EPOLLOUT && strlen(fd_buffer) != 0){
+					write(fd, fd_buffer, strlen(fd_buffer));
+					memset(fd_buffer, '\0', strlen(fd_buffer));
+				}	
+			}	
+		}	
+	}
+}
+*/
 void Scheduler::Run(){
 	while(true){
 		int epoll_event_num = epoll_wait(sepoll.getFD(), sepoll_events, MAX_EVENT_NUM, -1);
 		if(epoll_event_num == -1){
 			log.WriteFile(true, errno, "Scheduler::Run_epoll_wait failed ");
 		}
-		/*
-		 * 	这个对于超时的处理timeout
-		 * */
+		
+		// 	这个对于超时的处理timeout
+		 
 		else if(epoll_event_num == 0){
 			log.WriteFile(false, 0, "Scheduler::Run timeout");
 			continue;
@@ -59,9 +113,9 @@ void Scheduler::Run(){
 		char msg_buff[BUFF_SIZE];
 		for(int i = 0; i < epoll_event_num; i++){
 			FD args_fd = sepoll_events[i].data.fd;
-			/*
-			 * 	有连接的事件到来
-			 * */
+			
+			//  有连接的事件到来
+			 
 			if(scheduler_fd == args_fd){
 				struct sockaddr_in new_connect_addr;
 				socklen_t addr_len = sizeof(new_connect_addr);
@@ -74,16 +128,16 @@ void Scheduler::Run(){
 				sepoll.setnonblocking(new_connect_fd);
 				sepoll.addfd(new_connect_fd);
 			}
-			 /*
-			 *	对关闭数据fd进行操作
-			 * */
+			 
+			 //	对关闭数据fd进行操作
+			 
 			else if(sepoll_events[i].events & EPOLLRDHUP){
 				sepoll.delfd(args_fd);
 				close(args_fd);
 			}
-			/*
-			 *	对发过来的数据进行接受
-			 * */
+			
+			 //	对发过来的数据进行接受
+			 
 			else if(sepoll_events[i].events & EPOLLIN){
 
 				while(true){
@@ -91,26 +145,26 @@ void Scheduler::Run(){
 					memset(msg_buff, '\0', BUFF_SIZE * sizeof(char));
 					int recv_return = recv(args_fd, msg_buff, BUFF_SIZE-1, 0);
 					if(recv_return == -1){
-						/*
-						 *	对于非阻塞的模式下, 进行数据的读取.
-						 *		errno == EAGIN || errno == EWOULDBLOCK表示数据已经读取完成
-						 * */
+						
+						 //	对于非阻塞的模式下, 进行数据的读取.
+						 //		errno == EAGIN || errno == EWOULDBLOCK表示数据已经读取完成
+						
 						if((errno == EAGAIN) || errno == EWOULDBLOCK){
 							send(args_fd, std::string("ok\n").c_str(), 3, 0);
 							break;
 						}
-						/* 此外的情况下: 表示还有其他情况要进行处理 */
+						// 此外的情况下: 表示还有其他情况要进行处理 
 						log.WriteFile(true, errno, "Scheduler::Run_epoll_wait recv failed");
 					}
-					/*
-					 *	对方关闭了, 因为已经操作过, 则不进行
-					 * */
+					
+					 //	对方关闭了, 因为已经操作过, 则不进行
+					 
 					else if(recv_return == 0){
 						
 					}
-					/*
-					 * 	有数据情况下的处理
-					 * */
+					
+					// 有数据情况下的处理
+					 
 					else{
 							if(strncmp(msg_buff, std::string("end").c_str(), 3) == 0){
 								send(args_fd, std::string("ok\n").c_str(), 3, 0);
@@ -125,8 +179,7 @@ void Scheduler::Run(){
 			else {
 				std::cout << " something else happened " << std::endl;
 			}
-		}
-		
+		}		
 	}
 }
 /*

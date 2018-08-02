@@ -21,6 +21,8 @@
 #include"./bstage/bstage.hpp"
 #include"./sepoll/sepoll.hpp"
 #include"./json/Json.hpp"
+#include"./threads/threadpool.hpp"
+#include"./threads/locker.hpp"
 
 #define MAX_EVENT_NUM	1024
 #define BUFF_SIZE	127
@@ -40,6 +42,12 @@ class Scheduler{
 		Sepoll sepoll;
 		struct epoll_event sepoll_events[MAX_EVENT_NUM];
 		FD  scheduler_fd;
+
+		Mutex mutex;
+		/*
+		 *	子线程和主线程通信的工具
+		 * */
+		int pipe_fd[2];
 	public:
 		Scheduler();
 		void CreateLink();
