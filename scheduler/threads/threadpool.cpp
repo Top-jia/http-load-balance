@@ -27,10 +27,10 @@ Threadpool::Threadpool(int thread_num, int pipefd):pthread_num(thread_num), pipe
 		
 		/*
 		 *	将其进行分开
-		 * */
+		 * 
 		if(pthread_detach(pthread_array[i])){
 			log.WriteFile(true, i, "Threadpool::Threadpool failed in pthread_detach: ");
-		}
+		}*/
 	}
 }
 
@@ -64,7 +64,9 @@ void* Threadpool::thread_funtion(void *arg){
 		
 		int epoll_num = epoll_wait(epdata.sepoll.getFD(), epdata.events, EVENT_NUM, -1);
 		if(epoll_num == -1){
-			log.WriteFile(true, errno, "Threadpool::thread_funtion_epoll_wait failed ");		
+			epdata.mutex.Lock();
+			log.WriteFile(true, errno, "Threadpool::thread_funtion_epoll_wait failed ");
+			epdata.mutex.Unlock();
 		}
 		else if(epoll_num == 0){
 			/*

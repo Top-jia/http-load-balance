@@ -49,6 +49,7 @@ class Threadpool{
 				 * */
 				bool sub_flags;
 				Sem sem;
+				Mutex mutex;
 				Logger log;
 
 				Epolldata(Logger &tmp);
