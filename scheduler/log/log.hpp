@@ -12,16 +12,17 @@
 #include<stdio.h>
 #include<fcntl.h>
 #include<stdbool.h>
+#include"../locker/locker.hpp"
 
 /*
  *	日志文件的存放位置
  * */
-#define LOG_FILE	"./log_file.txt"
-
+#define	LOG_FILE	"./etc/log_file.txt"
 #define BUFF_SIZE	127
 
 class Logger{
 	std::string log_place;
+	Mutex mutex;
 	public:
 		Logger();
 		std::string GetCurTime();
@@ -36,5 +37,4 @@ class Logger{
 		 * */
 		void WriteFile(bool errno_level, int errno_num, std::string location);
 };
-
 #endif

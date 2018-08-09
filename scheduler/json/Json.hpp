@@ -10,7 +10,7 @@
 #include<string>
 #include<map>
 
-#define etc_file "config.json" 
+#define etc_file "./etc/config.json" 
 
 class Sinfo{
 		std::string ip;
@@ -29,7 +29,6 @@ class Sinfo{
 };
 
 class Json{
-		Logger log;
 		Sinfo sche_info;
 		Sinfo ser_info[3];
 		cJSON *root;

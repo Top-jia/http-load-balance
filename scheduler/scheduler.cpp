@@ -3,8 +3,7 @@
 /*
  *	初始化相关调度器的ip和端口
  * */
-Scheduler::Scheduler():bstage(log), sepoll(log){
-	
+Scheduler::Scheduler(){
 	Json json;
 	json.ParseConfigure();
 	sche_info = json.GetSche_info();
@@ -15,9 +14,9 @@ Scheduler::Scheduler():bstage(log), sepoll(log){
 	methon = json.GetMethon();
 	memset(sepoll_events, '\0', MAX_EVENT_NUM * sizeof(struct epoll_event));
 
-	int pipe_return = pipe2(pipe_fd, O_NONBLOCK);
-	if(pipe_return != 0){
-		log.WriteFile(true, errno, "Scheduler::Scheduler() pipe2 failed");
+	int sockpair_return = socketpair(AF_UNIX, SOCK_STREAM, 0, sockpair);
+	if(sockpair_return != 0){
+		log.WriteFile(true, errno, "Scheduler::Scheduler() socketpair failed");
 	}
 }
 
@@ -29,9 +28,6 @@ void Scheduler::CreateLink(){
 	if(scheduler_fd <= 0){
 		log.WriteFile(true, errno, "Scheduler::Createlink_socket failed ");
 	}
-	/*对scheduler_fd进行加入和设置*/
-	sepoll.setnonblocking(scheduler_fd);
-	sepoll.addfd(scheduler_fd);
 
 	struct sockaddr_in sche;
 	memset(&sche, '\0', sizeof(sche));
@@ -47,24 +43,30 @@ void Scheduler::CreateLink(){
 
 /*
  *	运行相关的程序
+ *	将pipe_fd替换成sockpair
+ *		第一步:
+ *			其中sockpair[0]作为主线程往进写入fd, sockpair[1]为子线程从中读入fd,
+ *		第二部: 对描述符的设置
+ *			scheduler_fd 只负责接受连接, 并将其通过sockpair[0]送到子线程.
+ *			其中epoll_wait监控的事件, 只有scheduler_fd, 其余的监控交给子线程去处理.
  * */
-/*
+
 void Scheduler::Run(){
 	
 	 //		加入管道的描述符到主线程的epoll中
-	 //并对其事件进行写入, (当有连接请求的时候)可写事件
-	 
-	Threadpool pool(SER_NUM, pipe_fd[1]);
-	sepoll.setnonblocking(pipe_fd[1]);
-	sepoll.addfd(pipe_fd[1]);
-
-	char fd_buffer[BUFF_SIZE/10];
-	memset(fd_buffer, '\0', BUFF_SIZE/10);
-
+	 //并对其事件进行写入, (当有连接请求的时候)可写事件	 
+	CreateLink();
+	/*先设置scheduler_fd设置其事件为EPOLLIN(阻塞与否, 不重要)*/
 	struct epoll_event event;
-	event.data.fd = pipe_fd[1];
-	event.events = EPOLLET | EPOLLRDHUP;
-	sepoll.modfd(pipe_fd[1], &event);
+	memset(&event, '\0', sizeof(struct epoll_event));
+	event.data.fd = scheduler_fd;
+	event.events = EPOLLIN;
+	sepoll.addfd(scheduler_fd, &event);
+
+	/*对双端管道设置非阻塞模式*/
+	sepoll.setnonblocking(sockpair[1]);
+	
+	Threadpool pool(SER_NUM, sockpair[1]);
 	while(true){
 		int epoll_return = epoll_wait(sepoll.getFD(), sepoll_events, MAX_EVENT_NUM, -1);
 		if(epoll_return == -1){
@@ -77,25 +79,33 @@ void Scheduler::Run(){
 		else{
 			for(int i = 0; i < epoll_return; i++){
 				int fd = sepoll_events[i].data.fd;
+				/*有连接事件到来*/
 				if(fd == scheduler_fd){
-					struct sockaddr_in client;
-					socklen_t cli_len = sizeof(client);
-					memset(&client, '\0', cli_len);
-					int new_fd = accept(fd, (struct sockaddr*)&client, &cli_len);
-					if(new_fd == -1){
-						log.WriteFile(true, errno, "Scheduler::Run accept failed ");
-					}
-					sprintf(fd_buffer, "%d", new_fd);
+					accept_link(fd);
+					continue;
 				}
-				if(sepoll_events[i].events & EPOLLOUT && strlen(fd_buffer) != 0){
-					write(fd, fd_buffer, strlen(fd_buffer));
-					memset(fd_buffer, '\0', strlen(fd_buffer));
-				}	
 			}	
 		}	
 	}
 }
-*/
+
+void Scheduler::accept_link(int fd){
+	if(fd <= 0){
+		log.WriteFile(true, errno, "Scheduler::accept_link failure in args ");
+	}
+	char buffer_fd[BUFF_SIZE];
+	memset(buffer_fd, '\0', BUFF_SIZE);
+	struct sockaddr_in client;
+	socklen_t cli_len = sizeof(client);
+	memset(&client, '\0', cli_len);
+	int accept_fd = accept(fd, (struct sockaddr*)&client, &cli_len);
+	if(accept_fd == -1){
+		log.WriteFile(true, errno, "Scheduler::accept return failed ");
+	}
+	sprintf(buffer_fd, "%d", accept_fd);
+	write(sockpair[0], buffer_fd, strlen(buffer_fd));
+}
+/*
 void Scheduler::Run(){
 	while(true){
 		int epoll_event_num = epoll_wait(sepoll.getFD(), sepoll_events, MAX_EVENT_NUM, -1);
@@ -182,7 +192,7 @@ void Scheduler::Run(){
 		}		
 	}
 }
-/*
+
  * void Scheduler::Run() : 0{
 	
 	struct sockaddr_in scheduler_cli;

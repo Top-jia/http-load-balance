@@ -73,7 +73,7 @@ bool Mutex::Unlock(){
  *		可以是信号量的一种, 也可能是一种特殊的信号量机制
  * */
 Cond::Cond(){
-	assert(pthread_mutex_init(&m_mutex, NULL) != 0 && pthread_cond_init(&m_cond, NULL) != 0);
+	assert( pthread_mutex_init(&m_mutex, NULL) == 0 && pthread_cond_init(&m_cond, NULL) == 0);
 }
 
 /*
@@ -81,8 +81,7 @@ Cond::Cond(){
  * */
 Cond::~Cond(){
 	pthread_mutex_destroy(&m_mutex);
-	pthread_mutex_destroy(&m_mutex);
-
+	pthread_cond_destroy(&m_cond);
 }
 
 /*

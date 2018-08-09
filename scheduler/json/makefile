@@ -21,7 +21,7 @@ MYLIB=libmy.a
 
 #---------------------------------------
 test_json:test_json.o $(location)$(MYLIB)
-	$(CC) -o test_json test_json.o -L$(location) -lmy
+	$(CC) -o test_json test_json.o -L$(location) -lmy -lpthread
 
 $(location)$(MYLIB):cJSON.o Json.o
 	ar -qs $(location)$(MYLIB) cJSON.o Json.o

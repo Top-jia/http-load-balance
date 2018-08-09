@@ -22,9 +22,8 @@
 
 class Bstage{
 		std::string new_dir;
-		Logger bstage_log;
 	public:
-		Bstage(Logger &log);
+		Bstage();
 		void CloseFD();
 		void SetFileMask();
 		void SetSigMask();

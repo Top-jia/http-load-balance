@@ -26,14 +26,12 @@ test_threadpool:test_threadpool.o $(location)$(MYLIB)
 test_threadpool.o:test_threadpool.cpp
 	$(CC) -c $(CFLAGS) test_threadpool.cpp
 
-$(location)$(MYLIB):threadpool.o locker.o
-	ar -qs $(location)$(MYLIB) threadpool.o locker.o
+$(location)$(MYLIB):threadpool.o 
+	ar -qs $(location)$(MYLIB) threadpool.o 
 
 threadpool.o:threadpool.cpp
 	$(CC) -c $(CFLAGS) threadpool.cpp -I$(INCLUDE)
 
-locker.o:locker.cpp
-	$(CC) -c $(CFLAGS) locker.cpp -I$(INCLUDE)
 #-----------------------------------------
 clean:
 	rm -rf *.o && rm -rf test_threadpool && rm -rf log_file.txt

@@ -3,8 +3,7 @@
 
 int main()
 {
-	Logger log;
-	Bstage bstage(log);
+	Bstage bstage;
 	bstage.CloseFD();
 	return 0;
 }

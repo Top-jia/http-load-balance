@@ -24,13 +24,13 @@ main:main.o $(location)$(MYLIB)
 	$(CC) -o main main.o -L$(location) -lmy -lpthread
 
 $(location)$(MYLIB):scheduler.o
-	mkdir -p $(location)
+	(cd locker;$(MAKE))
 	(cd log;$(MAKE))
-	ar qs $(location)$(MYLIB) scheduler.o
 	(cd bstage; $(MAKE))
 	(cd sepoll;$(MAKE))
 	(cd json;$(MAKE))
 	(cd threads;$(MAKE))
+	ar qs $(location)$(MYLIB) scheduler.o
 
 main.o:main.cpp 
 	$(CC) -c main.cpp $(CFLAGS) -I $(INCLUDE) 
@@ -42,7 +42,8 @@ run:
 	$(Mcheck) ./main
 
 clean:
-	rm -rf *.o && rm -rf main && rm -rf mylib && rm -rf log_file.txt
+	rm -rf *.o && rm -rf main && rm -rf mylib && rm -rf ./etc/log_file.txt
+	(cd locker;$(MAKE) clean)
 	(cd log;$(MAKE) clean)
 	(cd bstage;$(MAKE) clean)
 	(cd sepoll;$(MAKE) clean)

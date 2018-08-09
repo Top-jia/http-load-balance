@@ -20,7 +20,7 @@ MYLIB=libmy.a
 
 #--------------------------------
 test_bstage:test_bstage.o  $(location)$(MYLIB)
-	$(CC) -o test_bstage test_bstage.o -L$(location) -lmy
+	$(CC) -o test_bstage test_bstage.o -L$(location) -lmy -lpthread
 
 $(location)$(MYLIB):bstage.o
 	ar -qs $(location)$(MYLIB) bstage.o

@@ -7,7 +7,6 @@
 
 /*信号量类*/
 class Sem{
-
 		sem_t m_sem;
 		unsigned int value;
 	public:
@@ -20,8 +19,8 @@ class Sem{
 
 /*互斥锁类*/
 class Mutex{
-		pthread_mutex_t m_mutex;
 	public:
+		pthread_mutex_t m_mutex;
 		Mutex();
 		~Mutex();
 		bool Lock();

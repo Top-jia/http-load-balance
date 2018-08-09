@@ -20,7 +20,7 @@ MYLIB=libmy.a
 
 #-----------------------------------------
 test_sepoll:test_sepoll.o $(LOCATION)$(MYLIB)
-	$(CC) -o test_sepoll test_sepoll.o -L$(LOCATION) -lmy
+	$(CC) -o test_sepoll test_sepoll.o -L$(LOCATION) -lmy -lpthread
 
 $(LOCATION)$(MYLIB):sepoll.o
 	ar qs $(LOCATION)$(MYLIB) sepoll.o

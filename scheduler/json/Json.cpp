@@ -1,5 +1,6 @@
 #include"Json.hpp"
 
+extern Logger log;
 Sinfo::Sinfo(){
 
 }
@@ -130,8 +131,3 @@ Sinfo Json::GetSer_info(int i){
 std::string Json::GetMethon(){
 	return default_methon;
 }
-/*
-std::map<std::string, std::string> Json::GetSche(){
-	return std::make_pair<std::string, std::string>(std::string("hello"), std::string("world"));
-}
-*/

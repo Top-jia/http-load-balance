@@ -1,9 +1,10 @@
 #include"bstage.hpp"
 
+extern Logger log;
 /*
  *	构造函数
  * */
-Bstage::Bstage(Logger &log):new_dir(SWITCH_DIR), bstage_log(log){
+Bstage::Bstage():new_dir(SWITCH_DIR){
 	pid_t pid = fork();
 	if(-1 == pid)
 	{
@@ -30,7 +31,7 @@ Bstage::Bstage(Logger &log):new_dir(SWITCH_DIR), bstage_log(log){
  *	相对于对于进程的相关信息的设置, 等需要的时候在进行设置.
  * */
 void Bstage::CloseFD(){
-	bstage_log.WriteFile(false, errno, "Bstage::CloseFD_close failed ");
+	log.WriteFile(true, errno, "Bstage::CloseFD_close failed ");
 }
 
 void Bstage::OpenFD(){

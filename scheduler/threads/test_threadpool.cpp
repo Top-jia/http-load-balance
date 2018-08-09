@@ -14,6 +14,7 @@
 #define  BUFF_SIZE	127
 #define	 MAX_EVENT	1024
 
+Logger log;
 int create_socket(){
 	const char *ip = "127.0.0.1";
 	int  port= 7800;
@@ -44,15 +45,10 @@ int main(){
 	event.events = EPOLLIN | EPOLLRDHUP;
 	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sockfd, &event);
 
-	memset(&event, '\0', sizeof(struct epoll_event));
-	event.data.fd = pipe_fd[1];
-	event.events = EPOLLOUT | EPOLLRDHUP;
-	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, pipe_fd[1], &event);
-
 	char fd_buffer[BUFF_SIZE/10];
 	memset(fd_buffer, '\0', BUFF_SIZE/10);
 	struct epoll_event events[MAX_EVENT];
-	//Threadpool pool(3, pipe_fd[0]);
+	Threadpool pool(3, pipe_fd[0]);
 	while(1){
 		int epoll_num = epoll_wait(epoll_fd, events, MAX_EVENT, -1);
 		if(epoll_num == -1){
@@ -73,11 +69,7 @@ int main(){
 					int new_fd = accept(fd, (struct sockaddr*)&client, &cli_len);
 					assert(new_fd != -1);
 					sprintf(fd_buffer, "%d", new_fd);
-				}
-
-				if(events[i].events & EPOLLOUT && strlen(fd_buffer) != 0){
-					write(fd, fd_buffer, strlen(fd_buffer));
-					memset(fd_buffer, '\0', strlen(fd_buffer));
+					write(pipe_fd[1], fd_buffer, strlen(fd_buffer));
 				}
 			}
 		}

@@ -14,6 +14,7 @@
 #include<assert.h>
 #include<stdbool.h>
 #include<sys/epoll.h>
+#include<unistd.h>
 /*
  *	对于自己设置的头文件, 必须加载器头文件的位置
  * */
@@ -22,19 +23,17 @@
 #include"./sepoll/sepoll.hpp"
 #include"./json/Json.hpp"
 #include"./threads/threadpool.hpp"
-#include"./threads/locker.hpp"
+#include"./locker/locker.hpp"
 
 #define MAX_EVENT_NUM	1024
 #define BUFF_SIZE	127
 #define SER_NUM		3
 #define _GUN_SOURCE
 
+extern Logger log;
 typedef  int FD;
-
 class Scheduler{
-		Logger log;
 		Bstage bstage;
-
 		Sinfo sche_info;
 		Sinfo ser_info[SER_NUM];
 		std::string methon;
@@ -42,16 +41,15 @@ class Scheduler{
 		Sepoll sepoll;
 		struct epoll_event sepoll_events[MAX_EVENT_NUM];
 		FD  scheduler_fd;
-
-		Mutex mutex;
 		/*
 		 *	子线程和主线程通信的工具
 		 * */
-		int pipe_fd[2];
+		FD sockpair[2];
+		/*一些处理数据的函数*/
+		void accept_link(int fd);
 	public:
 		Scheduler();
 		void CreateLink();
 		void Run();
 };
-
 #endif

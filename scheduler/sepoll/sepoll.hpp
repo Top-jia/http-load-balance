@@ -11,15 +11,13 @@
 typedef int FD;
 class Sepoll{
 		FD epoll_fd;
-		Logger &log;
 	public:
-		Sepoll(Logger &_log);
+		Sepoll();
+		static void setnonblocking(FD fd);
 		
-		void addfd(FD fd);
+		void addfd(FD fd, struct epoll_event *event = NULL);
 		void delfd(FD fd);
 		void modfd(FD fd, struct epoll_event *event);
-		void setnonblocking(FD fd);
 		FD getFD();
 };
-
 #endif

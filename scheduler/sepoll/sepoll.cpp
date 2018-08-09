@@ -1,9 +1,11 @@
 #include"sepoll.hpp"
 
+extern Logger log;
+
 /*
  *	Sepoll() 构造函数初始化
  * */
-Sepoll::Sepoll(Logger &_log):log(_log){
+Sepoll::Sepoll(){
 	epoll_fd = epoll_create(5);
 	if(epoll_fd == -1){
 		log.WriteFile(true, errno, "Sepoll::init_epoll_create failed");
@@ -13,16 +15,22 @@ Sepoll::Sepoll(Logger &_log):log(_log){
 /*
  *	对加入epoll事件集的fd, 将其设置为ET模式, 写入可读事件
  * */
-void Sepoll::addfd(FD fd){
+void Sepoll::addfd(FD fd, struct epoll_event *event){
 	if(fd <= 0){
 		log.WriteFile(true, 0, "Sepoll::addfd args fd failed");
 	}
-
-	struct epoll_event event;
-	event.data.fd = fd;
-	event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
-	if(-1 == epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event)){
-		log.WriteFile(true, errno, "Sepoll::addfd_epoll_ctl failed");
+	if(event == NULL){
+		struct epoll_event event;
+		event.data.fd = fd;
+		event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
+		if(-1 == epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event)){
+			log.WriteFile(true, errno, "Sepoll::addfd_epoll_ctl failed");
+		}
+	}
+	else{
+		if(-1 == epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, event)){
+			log.WriteFile(true, errno, "Sepoll::addfd_epoll_ctl failed");
+		}
 	}
 }
 

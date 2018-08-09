@@ -23,11 +23,12 @@ void Logger::WriteFile(bool errno_level, int errno_num, std::string location){
 	std::string cur_time = GetCurTime();
 	std::string error_info = cur_time + std::string(buffer);
 	
+	mutex.Lock();
 	int fd = open(log_place.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0644);
 	if(fd <= 0){
 		std::cout << "Logger::WriteFile_open failed errno = " << errno \
 			<< " stderror(errno) = "<< strerror(errno) << std::endl;
-		exit(0);
+		exit(EXIT_FAILURE);
 	}
 
 	write(fd, cur_time.c_str(), cur_time.size()-1);
@@ -35,9 +36,11 @@ void Logger::WriteFile(bool errno_level, int errno_num, std::string location){
 	write(fd, buffer, strlen(buffer));
 	if(errno_level == true){
 		close(fd);
-		exit(0);
+		mutex.Unlock();
+		exit(EXIT_FAILURE);
 	}
 	close(fd);
+	mutex.Unlock();
 }
 
 /*

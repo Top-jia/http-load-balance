@@ -1,14 +1,13 @@
 #include"sepoll.hpp"
 
 int main(){
-	Logger log;
-	Sepoll epoll(log);
+	Sepoll edata;
 	
-	epoll.addfd(7);
-	epoll.addfd(8);
+	edata.addfd(7);
+	edata.addfd(8);
 
-	epoll.delfd(7);
-	epoll.setnonblocking(7);
+	edata.delfd(7);
+	edata.setnonblocking(7);
 	
 	return 0;
 }

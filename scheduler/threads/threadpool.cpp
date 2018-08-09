@@ -1,36 +1,34 @@
 #include"threadpool.hpp"
 
-
+extern Logger log;
+Sem sem;
 /*
  *	线程池的初始化
  * */
-Threadpool::Threadpool(int thread_num, int pipefd):pthread_num(thread_num), pipe_fd(pipefd), sum_flags(true){
+Threadpool::Threadpool(int thread_num, int pipefd):pthread_num(thread_num), pipe_read(pipefd), sum_flags(true){
 	if(thread_num <= 0 || thread_num > MAX_THREAD_NUM){
 		log.WriteFile(true, 0, "Threadpool::Threadpool failed in args");
 	}
 	/*
 	 *	运行服务器并连接----
 	 * */
-
 	pthread_array = new pthread_t[thread_num];
 	if(pthread_array == NULL){
 		log.WriteFile(true, 0, "Threadpool::Threadpool failed in pthread_array ");
 	}
-
 	/*
 	 *	创建多个线程
 	 * */
 	for(int i = 0; i < pthread_num; i++){
 		if(pthread_create(pthread_array+i, NULL, run, (void*)this) !=  0){
 			log.WriteFile(true, i, "Threadpool::Threadpool failed in pthread_create: ");
-		}
-		
+		}	
 		/*
 		 *	将其进行分开
-		 * 
+		 */ 
 		if(pthread_detach(pthread_array[i])){
 			log.WriteFile(true, i, "Threadpool::Threadpool failed in pthread_detach: ");
-		}*/
+		}
 	}
 }
 
@@ -56,17 +54,15 @@ Threadpool::~Threadpool(){
  * */
 void* Threadpool::thread_funtion(void *arg){
 	Threadpool *mythis = (Threadpool*)arg;
-	Epdata epdata(log);
-	epdata.sepoll.setnonblocking(mythis->pipe_fd);
-	epdata.sepoll.addfd(mythis->pipe_fd);
+	Epdata epdata;
+	epdata.sepoll.setnonblocking(mythis->pipe_read);
+	epdata.sepoll.addfd(mythis->pipe_read);
 
 	while(epdata.sub_flags || mythis->sum_flags){
 		
 		int epoll_num = epoll_wait(epdata.sepoll.getFD(), epdata.events, EVENT_NUM, -1);
 		if(epoll_num == -1){
-			epdata.mutex.Lock();
 			log.WriteFile(true, errno, "Threadpool::thread_funtion_epoll_wait failed ");
-			epdata.mutex.Unlock();
 		}
 		else if(epoll_num == 0){
 			/*
@@ -82,7 +78,7 @@ void* Threadpool::thread_funtion(void *arg){
 				 *	对管道数据进行处理
 				 *先不约定对数据规则的定义,
 				 * */
-				if(fd == mythis->pipe_fd){
+				if(fd == mythis->pipe_read){
 					epdata.process_pipe_data(fd);
 				}
 				/*
@@ -113,7 +109,7 @@ void* Threadpool::thread_funtion(void *arg){
 /*
  *	对内部类进行初始化
  * */
-Threadpool::Epolldata::Epolldata(Logger &_log):sepoll(_log), sub_flags(false){
+Threadpool::Epolldata::Epolldata():sub_flags(false){
 	memset(events, '\0', sizeof(struct epoll_event) * EVENT_NUM);
 }
 
@@ -131,7 +127,7 @@ void Threadpool::Epolldata::process_pipe_data(int fd){
 	if(read(fd, buffer, 20) <= 0){
 		
 		sem.Post();
-		return ;
+		log.WriteFile(true, errno, "Threadpool::Epolldata::process_pipe_data(int fd) failure in read()");
 	}
 	sem.Post();
 	int new_fd = atoi(buffer);
