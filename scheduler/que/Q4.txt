@@ -1,0 +1,11 @@
+	对于提交过程中的理解:
+		出错: 当从本地修改的文件(已经删除的, 但要保存), 但是git commit -a已经提交到
+	版本库中, 如何进行恢复如下:
+		git rest HEAD //目录 从版本库中恢复到暂存区
+		git checkout //目录	 从暂存区恢复到本地.
+
+		git status 将恢复将重新创建了文件
+
+		git add *
+		git commit -a
+
