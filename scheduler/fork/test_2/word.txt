@@ -1,0 +1,125 @@
+信号量, 共享内存, 消息队列
+IPC:
+	信号量:用于管理对资源的访问.
+	共享内存:用于在程序中高效的共享数据.
+	消息队列:在程序之间传递数据的一种简单方法.
+
+	
+信号量:
+		临界代码(确保只有一个进程来访问).它是一个特殊的变量, 等待或者发送信号
+		P(信号变量), 用于等待, sv>0 则-1, 否则,等待
+		V(信号变量), 用于发送信号, 让等待sv恢复运行, +1操作
+		semphore sv = 1;
+		loop forever{
+			P(sv);
+			critical code section;
+			V(sv);
+			noncritical code section;
+		}
+
+
+linux的信号量机制:
+	#include<sys/sem.h>
+	int semctl(int sem_id, int sem_num, int command, ......);
+	int getsem(key_t key, int num_sems, int sem_flags);
+	int semop(int sem_id, struct sembuf *sem_ops, size_t num_sem_opt);
+		参数key的作用很想一个文件名, 它代表可能要使用的某个资源, 如果多个程序使用相同的key
+	值, 它将负责协调工作, 与此类似, 由semget函数返回的并且在其他共享内存函数中的标识符也与
+	fopen返回的FILE*文件流很相似, 进程需要通过它来访问共享文件, 不同的进程可以用不同的信号量
+	表示同一信号量, 
+
+		1.semget函数创建一个信号量或者获得一个信号量.
+			int getsem(key_t key, int num_sem, int sem_flags);
+			key, 不相关的程序可以通过其来访问同一信号量, 所有的程序对信号量的访问都是间接的,
+		他提供一个键值, 再由信号量生成信号量标识符, 只有semget函数才直接使用信号量键, 所有的
+		信号量函数都是使用由semget函数返回的信号量标识符.
+			IPC_PRIVATE:	创建者进程才能访问的信号量, 
+			在创建信号量的时候, 只提供一个唯一的非零值.
+			sem_num = 1, 
+			sem_flags, 一组标识, 低端9位(文件的权限), IPC_CREAT, IPC_EXEL(创建一个唯一的)
+			成功()信号量标识符, 失败-1
+	
+		2.semop函数用于改变信号量的值, 
+			int semop(int sem_id, struct sembuf *sem_ops, size_t num_sem_ops);
+			sem_id 为semget返回的信号的值,
+			struct sembuf{
+				short sem_num;	信号量的编号,0
+				short sem_op;	在操作中需要改变的值,
+				short sem_flg;	SEM_UNOD进程结束时, 对信号量进行释放操作.
+			};
+			num_sem_ops指定要操作的个数,
+			成功0, 失败-1(所有的操作不执行)
+		3.semctl允许调用者对信号量进行直接操作.
+			int semctl(int sem_id, int sem_num, int command, ....);
+			sem_id为semget的操作返回值,
+			int sem_num 参数信号量的变化, 0, 如果是一组的话(指定)
+
+			第四个参数:union semun
+			union semun{
+				int val;
+				struct semid_ds *buff;
+				unsigned short *array;
+			};
+			SETVAL:	用来把信号量初始化为一个已知的值,
+			IPC_RMID:	用于删除一个无需继续使用的信号量.
+				test_0.cpp test_1.cpp
+	
+linux下的共享内存. 它允许两个不相关的进程访问同一逻辑内存, 都是把不同进程之间共享的
+内存空间安排同一段物理内存.
+		ipc特殊地址范围, 它出现该地址空间中, 其他进程可以将同一段共享内存连续到他们自己
+	的地址空间, 如果某个进程向共享内存写入数据, 所做的改动将立即可以访问同一段共享内存
+	任何其他程序看到.
+		同步共享内存的访问, 用共享内存来提供对大块内存区域的访问的有效访问, 同时传递
+	小消息来同步对该内存的访问.
+		
+		#include<sys/shm.h>	
+		void* shmat(int shm_id, const void *shm_addr, int shmflg);
+		int shmctl(int shm_id, int cmd, struct shmid_ds *buf);
+		int shmdt(const void *shm_addr);
+		int shmget(key_t key, size_t size, int shmflg);
+
+	shmget:来创建共享内存，
+			int shmget(key_t key, size_t size, int shmflg);
+			key:有效的共享内存命名, 返回一个共享内存的标识符
+			size: 大小
+			shmflg:包括9个权限位, IPC_CREAT与权限位, 
+			权限位: 对共享内存有用, 允许一个进程创建的共享内存可以被共享内存的创建者所
+		拥有的进程写入, 同时其他用户创建的进程只能读取该共享内存, 只读数据的访问, 通过
+		将数据放入共享内存并设置它的权限, 就可以避免数据被其他用户修改.
+			失败 -1.
+	shmat函数:
+			第一次创建共享内存段, 他不能被任何进程访问, 想要启用对共享内存的访问, 必须
+		接到一个进程的地址空间中.
+			void* shmat(int shm_id, const void *shm_addr, int shmflg);
+			shm_id: 有shmget返回的共享内存的标识符.
+			shm_addr:指定的是共享内存连接到当前进程中的地址位置, NULL(让系统来选择).
+			shmflg: 它的两个可能取值
+					SHM_RND:用来控制共享内存连接的地址, 
+					SHM_RDONLY:内存只读, 
+			成功它指向共享内存地址第一个字的字节指针,  -1
+			共享内存的读写权限由它的属主,(共享内存的创建者), 它的访问权限， 和当前进程
+		属主决定. 共享内存的访问权限类似于文件的访问权限。
+	shmdt: 分离, 它的参数shmat返回的指针, 对当前进程不可用(移除, 未删除),
+			成功0, 失败-1
+
+	shmctl: 
+			int shmctl(int shm_id, int command, struct shmis_ds *buf);
+				共享内存模式和访问权限的结构.
+			struct shmid_ds{
+				uid_t shm_pert.uid;
+				uid_t shm_perm.gid;
+				mode_t shm_pert,mode;
+			};
+			shm_id: 标识符
+			IPC_STAT:	shmid_ds结构中的数据设置为共享内存的当前关联值.
+			IPC_SET:	如果进程有足够的权限, 把共享内存的当前关联值设置为shmid_ds结构中给出
+		的值,
+			IPC_RMID:   删除共享内存段.
+		成功0 失败-1
+			test_2.cpp test_3.cpp
+			简单聊天室 test_4.cpp
+				对于群发数据的操作, fcntl, epoll_ctl, iovtl等相关文件描述符的操作还是有区别的.
+			多进程聊天室 
+				其中: testdir_5为主要的相关代码的测试, 
+					  test_5.cpp为程序
+		

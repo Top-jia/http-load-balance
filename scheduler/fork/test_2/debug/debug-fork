@@ -1,0 +1,55 @@
+对于多进程的调试技巧:
+	调试正在运行的程序:
+	@1:其他进程也在运行
+		set follow-fork child | parent
+		(gdb) set follow-fork-mode 
+		Requires an argument. Valid arguments are child, parent.
+	@2:调试已经运行的进程,
+		test_0.cpp
+		part0: 
+				先得到程序的pid,
+				再用gdb programe_name -p=pid来运行程序
+				bt(来查看调用的堆栈信息)
+				当gdb程序运行完成后, ps 任然显示信息
+		part1:
+				先得到pid
+				再用gdb -q
+					(gdb) attach pid
+				bt
+				ps 程序任然运行.
+
+	@3:调试子进程
+		默认情况下: 运行父进程
+		set follow-fork child 
+		来运行子进程
+	
+	@4:同时运行子进程和父进程.
+		一个阻塞(一个运行)
+		set detach-on-fork on(默认)
+		test_1.cpp
+		$1:对于两个进程的父子程序中,
+			如果调试父进程, 子进程挂起, 当父进程运行完成后,
+		用info inferior来查看程序的状态, 
+			(gdb) info inferior
+			  Num  	   Description       Executable        
+			    2      process 9410      /home/jia/Project/http-load-balance/scheduler/fork/test_2/debug/test_1 
+				*1     process 9407      /home/jia/Project/http-load-balance/scheduler/fork/test_2/debug/test_1 
+		当转化到子进程中, 进行运行的时候,
+		inferior 2
+		(gdb) inferior 2
+			[Switching to inferior 2 [process 9410] (/home/jia/Project/http-load-balance/scheduler/fork/test_2/debug/test_1)]
+			[Switching to thread 2 (process 9410)] 
+			#0  0x001e7424 in ?? ()
+			(gdb) bt
+			#0  0x001e7424 in ?? ()
+			#1  0x080484e2 in main () at test_1.cpp:6
+		可以得知, 子进程已经无法运行, 找不到运行的地址.自己推测, 父进程已经死亡, 子进程挂载到1上
+			S+    6525  9405 gdb test_1
+			T        1  9410 /home/jia/Project/http-load-balance/scheduler/fork/test_2/debug/test_1
+			可以猜测, 子进程已经处于停止状态,(无法运行), 
+		$2:调试子进程, 父进程等待状况的时候, 父进程可以获得子进程的状态, 可知, 经过调试后父进程在
+		子进程死亡之后, 任可以调试, 运行.
+
+	@5 对于set scheduler-mutiple on|off
+		是和 scheduler-locking 类似.
+

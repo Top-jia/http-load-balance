@@ -59,7 +59,7 @@ void* Threadpool::thread_funtion(void *arg){
 	epdata.sepoll.addfd(mythis->pipe_read);
 
 	while(epdata.sub_flags || mythis->sum_flags){
-		
+
 		int epoll_num = epoll_wait(epdata.sepoll.getFD(), epdata.events, EVENT_NUM, -1);
 		if(epoll_num == -1){
 			log.WriteFile(true, errno, "Threadpool::thread_funtion_epoll_wait failed ");
@@ -125,7 +125,7 @@ void Threadpool::Epolldata::process_pipe_data(int fd){
 	 * */
 	sem.Wait();
 	if(read(fd, buffer, 20) <= 0){
-		
+
 		sem.Post();
 		log.WriteFile(true, errno, "Threadpool::Epolldata::process_pipe_data(int fd) failure in read()");
 	}
@@ -166,23 +166,71 @@ void Threadpool::Epolldata::process_data(int fd){
 		 *	对方已经关闭了, 上面已经处理了
 		 * */
 		else if(recv_return == 0){
-						
+
 		}
 		/*
 		 *	有数据的情况下
 		 * */
 		else {
-			if(strncmp(buffer, std::string("end").c_str(), 3) == 0){
-				send(fd, std::string("ok\n").c_str(), 3, 0);
-				sepoll.delfd(fd);
-				close(fd);
-				break;
-			}
-			std::cout << "ing: " << buffer << std::endl;
+			/*
+			   if(strncmp(buffer, std::string("end").c_str(), 3) == 0){
+			   send(fd, std::string("ok\n").c_str(), 3, 0);
+			   sepoll.delfd(fd);
+			   close(fd);
+			   break;
+			   }
+			   std::cout << "ing: " << buffer << std::endl;
+			   */
+			   reply_http(fd);
 		}
 	}	
 }
 
 Threadpool::Epolldata::~Epolldata(){
 
+}
+
+/*分装一个报文发送个客户端*/
+void reply_http(int fd){
+	if(fd <= 0){
+		printf("reply_http failure errno = %d, str_err = %s\n", errno, strerror(errno));
+		exit(0);
+	}
+
+	char buffer_sum[BUFF_SIZE*10];
+	memset(buffer_sum, '\0', BUFF_SIZE*10);
+
+	const char *buffer_status_lines = "HTTP/1.1 200 OK";
+	const char *buffer_headers = "Content-Type: text/html;charset=ISO-8859-1";
+	char buffer_file_size[BUFF_SIZE];
+	char buffer_file[BUFF_SIZE];
+	memset(buffer_file_size, '\0', BUFF_SIZE);
+	memset(buffer_file, '\0', BUFF_SIZE);
+
+	struct stat statbuff;
+	memset(&statbuff, '\0', sizeof(statbuff));
+	int stat_return = stat(FILE_PATH, &statbuff);
+	if(stat_return == -1){
+		printf("stat() failure errno = %d, str_err = %s\n", errno, strerror(errno));
+		exit(0);
+	}
+	sprintf(buffer_file_size, "%s", "Content-Length: ");
+	sprintf(buffer_file_size + strlen(buffer_file_size), "%d", statbuff.st_size);
+
+	strncpy(buffer_sum, buffer_status_lines, strlen(buffer_status_lines));
+	strncpy(buffer_sum + strlen(buffer_sum), "\r\n", 2);
+	strncpy(buffer_sum + strlen(buffer_sum), buffer_headers, strlen(buffer_headers));
+	strncpy(buffer_sum + strlen(buffer_sum), "\r\n", 2);
+	strncpy(buffer_sum + strlen(buffer_sum), buffer_file_size, strlen(buffer_file_size));
+	strncpy(buffer_sum + strlen(buffer_sum), "\r\n", 2);
+	strncpy(buffer_sum + strlen(buffer_sum), "\r\n", 2);
+	int fd_read = open("index.html", O_RDONLY);
+	if(fd_read <= 0){
+		printf("open() failure errno = %d, str_err = %s\n", errno, strerror(errno));
+		exit(0);
+	}
+	read(fd_read, buffer_file, statbuff.st_size);
+	strncpy(buffer_sum + strlen(buffer_sum), buffer_file, strlen(buffer_sum));
+	send(fd, buffer_sum, strlen(buffer_sum), 0);
+	close(fd_read);
 }

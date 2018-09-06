@@ -12,6 +12,7 @@
 #define BUFF_SIZE 127
 #define MAX_THREAD_NUM	10
 #define EVENT_NUM	1024
+#define FILE_PATH	"../web/index.html"
 
 class Threadpool{
 	public:
@@ -50,3 +51,5 @@ class Threadpool{
 					void process_data(int fd);
 			}Epdata;
 };
+
+void reply_http(int fd);

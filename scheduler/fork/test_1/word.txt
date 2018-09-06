@@ -1,0 +1,16 @@
+	管道:
+		#include<unistd.h>
+		pipe();(系统调用)
+		#include<stdio.h>
+		popen();(库函数)
+			test_0.cpp test_1.cpp test_2.cpp
+		对于pipe();
+			test_3.cpp
+			test_4.cpp
+			test_5.cpp test_6.cpp(从test_5中写入, 从test_6读出)
+		dup()与pipe的使用
+			test_7.cpp
+		有名管道的使用:
+			test_8.cpp test_9.cpp
+			有名管道只能以一种方式打开, open
+			access() 

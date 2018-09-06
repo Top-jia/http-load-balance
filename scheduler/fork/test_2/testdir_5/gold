@@ -1,0 +1,88 @@
+对于信号集的设置:
+	part0:
+   	介绍一些操作信号集的API
+	#include<signal.h>
+	#include<bits/sigset.h>
+	#include<bits/signum.h>
+
+	/*将一个信号集清空, set中的位清空*/
+	int sigemptyset(sigset_t *set);
+	/*将信号集中的set重新填充, 设置成系统默认的信号集*/
+	int sigfillset(sigset_t *set);
+	/*将信号集中的添加signum信号*/
+	int sigaddset(sigset_t *set, int signum);
+	/*将信号集中取消signum*/
+	int sigdelset(sigset_t *set, int signum);
+	/*判断信号集中是否有其信号*/
+	int sigismember(sigset_t *set, int signum);
+
+
+	/*判断信号集中是否为空*/
+	int sigisemptyset(sigset_t *set);
+	/*将两个信号集进行或操作, 放入set中*/
+	int sigorset(sigset_t *set, sigset_t *set_left, sigset_t *set_right);
+	/*将两个信号集进行并操作, 放入set中*/
+	int sigandset(sigset_t *set, sigset_t *set_left, sigset_t *set_right);
+	
+	part1:
+		介绍些, 信号设置的API
+		#include<signal.h>
+		int sigaction(int sig, const struct sigaction *act, struct sigaction *old_act);
+			sig: 信号标号
+			act: 新信号处理方式
+			old_act: 旧的信号处理方式
+
+			struct sigaction{
+				_sighandler_t sa_handler;//处理函数
+				_sigset_t sa_mask;//信号掩码
+				int sa_flags; //设置程序收到信号时的行为,
+			};
+			sa_flags:
+				SA_NOCLDSTOP(一些信号的操作)
+			将sig_num打印为字符串 ----
+				strsignal(int signum);
+
+	part2:
+		介绍下, 对信号的扑捉时候的设置,
+		对陷入内核的系统调用的--epoll_wait
+			设置SA_RESTART
+			当有信号进行触发的时候, 会跳到信号处理函数中, 之信号完成后, 回到系统调用(epoll_wait中), 并且epoll_wait
+		返回一个错误, (被中断错误)Interrupted system call, 也就是当在被注册的事件返回之前, 发生了信号, 执行完信号处理函数之后, epoll_wait被迫返回,所返回的错误, 这样会降低事件的触发效率. EINTR 中断系统调用.
+			不设置:
+				和上面一样也会返回EINTR(多返回一次), 信号的发生会将系统调用返回errno = EINTR(空操作).
+		SIGINT(在gdb调试中, 是不会发送个给被调试的程序)
+	part3:
+		对信号的调试技巧
+			_1:
+				i signals(查看信号可以被暂停(来执行信号处理函数), 是否会显示触发信号信息, 是否会由gdb发送给被调试的程序), 显示默认处理方式, 可以通过下面的设置来进行设置.
+			_2:
+				通过对上面信息的获取, 可以对上面的信息进行设置
+				handle signum nostop/stop	来暂停程序, 运行信号处理函数
+				handle signum noprint/print 来打印信号信息(当信号发生的时候)
+				handle signum pass/nopass	来将信号是否发送给被调试的程序
+			_3:
+				调试中, 如果程序终止了ctrl+c, 用signal sig_num来让程序重新执行.test_4中
+				signal 0不发送信号, 让程序继续执行
+			_4: 
+				当有信号发生时, gdb再把信号丢给程序之前, 可以通过$_siginfo变量读取一些额外的有关当前信号的信息,
+			这些信息由内核传递给信号处理函数.
+	
+	part4:
+		对于信号的总结,
+			信号的概述.
+			信号处理函数有哪些, sigaction
+			信号集, 信号集的设置, 信号屏蔽字sigprocmask的设置, sigfillset sigisnumber...
+			信号的调试,
+			其中, 对信号的设置:
+				在接受状态下,
+					默认
+					忽略
+					自己重新定义
+				在设置信号屏蔽字设置的条件下,
+					只会触发一次(多次触发, 并设置恢复)
+				在系统调用中, 触发了信号的处理方式.
+
+	part5:
+		对于多进程的条件下: 
+			fork之后子进程共享父进程的信号处理函数, 而在exec之后, 将恢复信号处理函数默认值.
+
