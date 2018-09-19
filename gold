@@ -1,0 +1,47 @@
+gold:
+	采用异步非阻塞结构:
+		调度器:
+				半同步半异步模式.
+
+
+2018-7-16:
+		@1:完成大致流程.
+		@2:后台化.
+		@3:日志的写法.
+	遇到的问题及解决方案: 2018_7_19pm
+		#1.对于模块化编程的自我理解:
+			*1以自己的这个例子说明:
+					分为三部分: log Bstage main，
+				其中调用关系为: Bstage:
+									->log
+				main:	->log 
+						->Bstage
+				其中每部分为.hpp .cpp test.cpp
+			 	log_dir/：
+			 			log.hpp log.cpp test_log.cpp
+						makefile:
+						
+				 Bstage_dir/:
+				 		bstage.hpp bstage.cpp test_bstage.cpp
+						makefile:
+
+			 main:
+			 	scheduler.cpp scheduler.hpp 
+				makefile:
+						----
+			*2
+				在其中互相调用的过程中: 我们将其进行打包成静态库来
+			进行处理:
+				对其的部分class防止重复定义, 
+					#ifndef XXX
+					#define XXX
+					.
+			  		.
+					.
+					#endif
+				对其的头文件的引用的话,
+					#include"../.." 来进行处理
+				最后通过其中的main. 和静态库一起来对函数进行连接生成.
+2018_7_21:
+		完成json的操作加入, 源码的剖析.
+		完成子线程的加入和锁的加入.
