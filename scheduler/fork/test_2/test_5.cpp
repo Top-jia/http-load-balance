@@ -37,8 +37,12 @@
 #define EPOLL_EVENT_NUM	1024
 /* 对读取的字符串的大小的设置*/
 #define BUFF_SIZE	127
-/*全局共享内存的标识*/
+/* 全局共享内存的标识*/
 #define SHARE_MEMRAY_KEY	"1234"
+/* 所创建的子进程数量*/
+#define SUB_PROCESS_NUM		5
+/*对于每一个子进程在共享内存端, 都进行了偏移*/
+#define SHARE_MEMORY_CHUNK	256
 
 
 /*信号处理函数*/
@@ -177,6 +181,202 @@ class Epoll{
 		}
 };
 
+/*对于共享内存的控制类的设计*/
+Smemory class{
+		void *share_memory;
+		int  share_length;
+		int  shm_id;
+	public:
+		/*获得共享内存的长度, 并创建共享内存的标识*/
+		Smemory(int len = SHARE_MEMORY_CHUNK):share_length(len), share_memory(NULL), shm_id(-1){
+			shm_id = shmget((key_t)SHARE_MEMORY_KEY, share_length, 0666 | IPC_CREAT);
+			if(shm_id == -1){
+				fprintf(stderr, "Smemory::Smemory()__shmget() failure errno = %d, strerror(errno) = %s\n", errno, strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+		}
+		/*获取共享内存的地址*/
+		void my_shmat(){
+			share_memory = shmat(shm_id, NULL, 0);
+			if((void *)share_memory == -1){
+				fprintf(stderr, "Smemory::my_shmat()__shmat() failure errno = %d, strerror(errno) = %s\n", errno, strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+		}
+		/*从进程中将共享内存的这块地址与子进程分离开*/
+		void my_shmdt(){
+			int err = shmdt(share_memory);
+			if(err == -1){
+				fprintf(stderr, "Smemory::my_shmdt()__shmdt() failure errno = %d, strerror(errno) = %s\n", errno, strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+		}
+		/*从进程中删除共享内存的这块地址*/
+		void my_shm_remove(){
+			int err = shmctl(shm_id, IPC_RMID, 0);
+			if(err == -1){
+				fprintf(stderr, "Smemory::my_shm_remove()__shmctl() errno = %d, strerror(errno) = %s\n", errno, strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+		}
+		/*获取共享内存的的地址*/
+		void* get_share_memory(){
+			return share_memory;
+		}
+		/*对共享内存的这块地址进行修改: 做哪方面的修改*/
+		void my_shmctl(){
+		}
+		/*对共享内存的操作---不做修改*/
+		~Smemory(){		
+		}
+};
+
+/*对于子进程的信号处理函数*/
+void sub_sig_handler(int sig){
+	int save_errno = errno;
+	int msg = sig;
+	/*给管道中写入信号值*/
+	send(sockpair_fd, (char*)&msg, 1, 0);
+	errno = save_errno;
+}
+
+/*对于子进程的处理设计*/
+Sprocess class{
+		/*和主进程通信用的双端管道的fd*/
+		int sockpair_fd;
+		/*用epoll来对文件描述符, 进行监听, 可能还会有定时事件的加入.*/
+		void *share_memory;
+		/*用epoll来监听管道的文件描述符*/
+		Epoll edata;
+		/*epoll_event的事件集, 只包含一个管道的事件*/
+		struct epoll_event events[MAX_EVENT_NUM];
+		/*判断子进程是否运行*/
+		bool sub_flag;
+		/*标识子进程是否在处理数据*/
+		bool being_process;
+	public:
+		/*对于子进程来说, 其中共享内存有自己的默认值, 其中应该对信号进行一定的设计*/
+		Sprocess(int sockpairfd, void *_share_memory):sockpair_fd(sockpairfd), share_memory(_share_memory), sub_flag(true), begin_process{
+			/*注册一个管道描述符到epoll中*/
+			edata.setnonblocking(sockpairfd);
+			/*sockpair_fd的事件必须自己设计, 不能含有EPOLLET模式*/
+			struct epoll_event event;
+			memset(&event, '\0', sizeof(struct epoll_event));
+			event.data.fd = sockpair_fd;
+			event.events  = EPOOLLIN;
+			edata.addfd(sockpair_fd);
+			/*对于信号的设计, 只设计一个信号
+			 *	SIGTERM		当从kill发出时候, 就对其进行子进程移除操作.
+			 * */
+			sub_addsig(SIGTERM, sub_sig_handler);
+		}
+		/*运行子进程*/
+		void run_child(){
+			while(sub_flag){
+				int num = epoll_wait(edata.get_epollfd(), events, MAX_EVENT_NUM, -1);
+				if(num <= 0){
+					if(errno == EINTR){
+						continue;
+					}
+					fprintf(stderr, "Sprocess::run_child() failure errno = %d strerror(errno) = %s\n", errno, strerror(errno));
+					exit(EXIT_FAILURE);
+				}
+				else{
+					/*定义读取管道(非阻塞)的规则:
+					 *	1.主进程可能通知有数据在共享内存中
+					 *	2.有信号的触发, 会发送信号,
+					 *	所以:
+					 *		struct event_type{
+					 *			change == 0	为子进程信号事件
+					 *			change == 1 为父进程信号事件
+					 *			change == 2	为主进程通知(共享内存)的数据, 要子进程处理数据，或相反.
+					 *			int change;
+					 *			int sub_signum;
+					 *			int father_signum;
+					 *			int message;
+					 *		};
+					 * */
+					for(int i = 0; i < num; i++){
+						int fd = events.data.fd;
+						if(fd == sockpair_fd && events.events & EPOLLIN){
+							while(true){
+								struct event_type etype;
+								memset(&etype, '\0', sizeof(struct event_type));
+								int read_data = read(fd, (void*)&etype, sizeof(struct event_type), 0);
+								if(read_data < 0){
+									/*将数据读完*/
+									if(errno == EAGAIN || errno == EWOULDBLOCK){
+										break;
+									}
+								}
+								/*处理信号事件*/
+								if(etype.change == 0){
+									sub_flag = false;							
+								}
+								/*处理主进程给子进程发送的数据*/
+								else if(etype.change == 2)
+								{
+									memory((char*)share_memory, '\0', SHARE_MEMORY_CHUNK);
+									strncpy((char*)share_memory, "hello world", 11);
+									etype.change = 2;
+									write(sockpair_fd, (char*)&etype, sizeof(struct event_type));
+								}
+								/*可能还有时间轮机制, 来维持长连接, 暂时先放下*/
+								else{
+								}
+							}
+						}
+					}
+				}
+			}		
+		}
+		/*释放子进程的所有的资源*/
+		~Sprocess(){
+			/*子进程中与共享内存分离操作, 不进行移除操作(主进程负责移除操作)*/
+			int err = shmdt(share_memory);
+			if(err == -1){
+				fprintf(stderr, "Sprocess::~Sprocess()_shmdt() failure errno = %d strerror(errno) = %s\n", errno, strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+			/*关闭双端管道, 还有一端(任然未释放)*/
+			close(sockpair);	
+		}
+}
+		/*对子进程的信号处理*/
+		void sub_addsig(int sig, void(*handler)(int)){
+			if(sig < 0 || handler == NULL){
+				fprintf(stderr, "Ddata::addsig() failure args\n");
+				exit(EXIT_FAILURE);
+			}
+			struct sigaction sa;
+			memset(&sa, '\0', sizeof(struct sigaction));
+			sa.sa_handler = handler;
+			sigfillset(&sa.sa_mask);
+			int err = sigaction(sig, &sa, NULL);
+			if(err == -1){
+				fprintf(stderr, "Ddata::addsig()__sigaction() failure errno = %d strerror(errno) = %s, sig = %d, strsignal(sig) = %s", errno, strerror(errno), sig, strsignal(sig));
+				exit(EXIT_FAILURE);
+			}
+		}
+		/*信号处理函数*/
+		friend void sub_sig_handler(int sig);
+};
+/*创建子进程的类, 并对子进程, 如过不对其修改则地址不改变*/
+void create_sub_process(Sprocess &*ptr, int sockpair, void *sub_share_memory){
+		pid_t pid = fork();
+		if(pid == -1){
+			fprintf(stderr, "create_sub_process()__fork() failure errno = %d strerror(errno) = %s\n", errno, strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		else if(pid > 0){
+			return ;
+		}
+		else{
+			ptr = new Sprocess(sockpair, sub_share_memory);
+			ptr->sub_run();
+		}
+		return;
+}
 /*对于Epoll事件的处理数据类*/
 Ddata class{
 		struct epoll_event events[EPOLL_EVENT_NUM];
@@ -188,11 +388,14 @@ Ddata class{
 		int client_fd;
 		/*判断主程序是否运行*/
 		bool master_run;
+
 		/*进程池*/
-		Sprocess *sub_process;
+		Sprocess **sub_process;
+		/*对于共享内存的设计*/
+		Smemory share_memory;
 	public:
 		/*构造Ddata类: 初始化成员变量*/
-		Ddata(int _sockfd):sockfd(_sockfd), master_run(true){
+		Ddata(int _sockfd):sockfd(_sockfd), master_run(true), sub_process(NULL){
 			sockpair_fd = new int[2];
 			int err = socketpair(PF_UNIX, SOCK_STREAM, 0, sockpair);
 			if(err == -1){
@@ -209,7 +412,7 @@ Ddata class{
 				fprintf(stderr, "Ddata::Ddata()__accept() failure errno = %d, strerror(errno) = %s\n", errno, strerror(errno));
 				exit(EXIT_FAILURE);
 			}
-			/*对主网络连接的描述符进行设计*/
+			/*对主网络连接的描述符进行设计, 连接调度器的主网络*/
 			epoll_data.setnonblocking(sockfd);
 			struct epoll_event event;
 			memset(&event, '\0', sizeof(struct epoll_event));
@@ -222,6 +425,14 @@ Ddata class{
 			event_data.data.fd = sockpair_fd[0];
 			event_data.event = EPOLLIN | EPOLLRDHUP;
 			epoll_data.addfd(sockpair_fd[0], &event);
+
+			/*对子进程的处理设计*/
+			sub_process = new Sprocess *[sub_process];
+			for(int i = 0; i < sub_process; i++){
+				/*暂时不考虑资源的释放问题, 先解决流程*/
+				/*用一个函数来创建子进程, 防止在父进程中仍有多余的sub_process, sub_process只是子进程调用的开头*/
+				create_sub_process(sub_process[i], sockpair_fd[1], i * SHARE_MEMORY_CHUNK + share_memory.get_share_memory());
+			}
 		}
 		/*关闭相关的资源, 析构函数*/
 		~Data(){
@@ -235,14 +446,15 @@ Ddata class{
 			if(sig < 0 || handler == NULL){
 				fprintf(stderr, "Ddata::addsig() failure args\n");
 				exit(EXIT_FAILURE);
-				struct sigaction sa;
-				memset(&sa, '\0', sizeof(struct sigaction));
-				sa.sa_handler = handler;
-				sigfillset(&sa.sa_mask);
-				int err = sigaction(sig, &sa, NULL);
-				if(err == -1){
-					fprintf(stderr, "Ddata::addsig()__sigaction() failure errno = %d strerror(errno) = %s, sig = %d, strsignal(sig) = %s", errno, strerror(errno), sig, strsignal(sig));
-					exit(EXIT_FAILURE);
+			}
+			struct sigaction sa;
+			memset(&sa, '\0', sizeof(struct sigaction));
+			sa.sa_handler = handler;
+			sigfillset(&sa.sa_mask);
+			int err = sigaction(sig, &sa, NULL);
+			if(err == -1){
+				fprintf(stderr, "Ddata::addsig()__sigaction() failure errno = %d strerror(errno) = %s, sig = %d, strsignal(sig) = %s", errno, strerror(errno), sig, strsignal(sig));
+				exit(EXIT_FAILURE);
 				}
 			}
 		}
@@ -261,6 +473,7 @@ Ddata class{
 		}
 		/*运行程序*/
 		void run(){
+			/*处理相关的信号*/
 			handle_signal();
 			while(master_run){
 				int epoll_num = epoll_wait(epoll_data.getepoll_fd(), events, EPOLL_EVENT_NUM, -1);{
@@ -293,10 +506,25 @@ Ddata class{
 			
 			for(int i = 0; i < epoll_num; i++){
 				int fd = events[i].data.fd;
-				/*有客户端数据到来*/
+				/*有客户端数据到来:
+				 * 	1.如何表示那个地址, 来交给子进程.
+				 * 		给地址分段方法, 来处理
+				 * 		share_memory + SHARE_MEMEOY_CHUNK*i;分给某个地址
+				 *  2.如何确定子进程是否正在处理.
+				 *  	设计信号量组来同步一个, 来表示进程之间对同一变量是否在用.全局的
+				 *  	bool sub_process_is_use = false;
+				 * */
 				if(fd == sockfd){
-					
+					struct event_type etype;
+					memset(&etype, '\0', sizeof(struct event_type));
+					etype.change = 2;
+
 				}
+				/*关于父进程处理的管道:
+				 *		1.父进程中信号的写入.
+				 *		2.子进程给父进程发送的数据.
+				 * */
+				else if(fd == sockpair_fd[0])
 			
 			
 			}
