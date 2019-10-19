@@ -27,15 +27,17 @@
 
 #define MAX_EVENT_NUM	1024
 #define BUFF_SIZE	127
-#define SER_NUM		3
 #define _GUN_SOURCE
+
+#define SER_NUM		3
 
 extern Logger log;
 typedef  int FD;
 class Scheduler{
 		Bstage bstage;
 		Sinfo sche_info;
-		Sinfo ser_info[SER_NUM];
+		/*将网络配置文件放在线程处理函数中*/
+		//Sinfo ser_info[SER_NUM];
 		std::string methon;
 
 		Sepoll sepoll;

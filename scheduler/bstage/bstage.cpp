@@ -1,6 +1,6 @@
 #include"bstage.hpp"
 
-extern Logger log;
+Logger log;
 /*
  *	构造函数
  * */

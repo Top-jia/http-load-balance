@@ -1,15 +1,22 @@
 #include"scheduler.hpp"
 
+extern Logger log;
 /*
  *	初始化相关调度器的ip和端口
  * */
 Scheduler::Scheduler(){
+	
+	//log.WriteFile(false, -1, std::string("test info"));
 	Json json;
 	json.ParseConfigure();
+	
 	sche_info = json.GetSche_info();
+	
+	/*
 	for(int i = 0; i < SER_NUM; i++){
 		ser_info[i] = json.GetSer_info(i);
 	}
+	*/
 
 	methon = json.GetMethon();
 	memset(sepoll_events, '\0', MAX_EVENT_NUM * sizeof(struct epoll_event));
@@ -52,7 +59,6 @@ void Scheduler::CreateLink(){
  * */
 
 void Scheduler::Run(){
-	
 	 //		加入管道的描述符到主线程的epoll中
 	 //并对其事件进行写入, (当有连接请求的时候)可写事件	 
 	CreateLink();
@@ -62,7 +68,11 @@ void Scheduler::Run(){
 	event.data.fd = scheduler_fd;
 	event.events = EPOLLIN;
 	sepoll.addfd(scheduler_fd, &event);
-
+	
+	/*用于测试*/
+	//char buff[127];
+	//std::cout << getcwd(buff, 127) << std::endl;
+	//log.WriteFile(false, -1, std::string("test info"));
 	/*对双端管道设置非阻塞模式*/
 	sepoll.setnonblocking(sockpair[1]);
 	
@@ -70,6 +80,9 @@ void Scheduler::Run(){
 	while(true){
 		int epoll_return = epoll_wait(sepoll.getFD(), sepoll_events, MAX_EVENT_NUM, -1);
 		if(epoll_return == -1){
+			if(errno == EINTR){
+				continue;
+			}
 			log.WriteFile(true, errno, "Scheduler::Run epoll_wait failed");
 		}
 		else if(epoll_return == 0){

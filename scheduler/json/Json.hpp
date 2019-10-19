@@ -1,3 +1,6 @@
+#ifndef JSON_HPP
+#define JSON_HPP
+
 #include"cJSON.h"
 #include<sys/types.h>
 #include<sys/stat.h>
@@ -44,3 +47,5 @@ class Json{
 		std::map<std::string, std::string> GetSche();
 		~Json();
 };
+
+#endif 
