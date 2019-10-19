@@ -1,0 +1,13 @@
+主要是对libevent进行的使用:
+	@1.对libevent的简单使用.
+	@2.对编写服务器来对libevent进行调用.
+	@3.编译的时候, 直接添加对应的-levent
+
+learn:
+	@1.对定时器的事件进行了完成操作. 并完成了通用的接口形式.
+		struct event_base *; event_base_new();
+		struct event;
+		event_add
+		event_base_dispatch();
+		event_free();
+		event_base_free();
