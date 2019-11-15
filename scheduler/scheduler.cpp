@@ -1,6 +1,7 @@
 #include"scheduler.hpp"
 
 extern Logger log;
+extern Sem sem;
 /*
  *	初始化相关调度器的ip和端口
  * */
@@ -111,12 +112,15 @@ void Scheduler::accept_link(int fd){
 	struct sockaddr_in client;
 	socklen_t cli_len = sizeof(client);
 	memset(&client, '\0', cli_len);
+	
+	sem.Wait();
 	int accept_fd = accept(fd, (struct sockaddr*)&client, &cli_len);
 	if(accept_fd == -1){
 		log.WriteFile(true, errno, "Scheduler::accept return failed ");
 	}
 	sprintf(buffer_fd, "%d", accept_fd);
 	write(sockpair[0], buffer_fd, strlen(buffer_fd));
+	sem.Post();
 }
 /*
 void Scheduler::Run(){

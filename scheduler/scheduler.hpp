@@ -29,7 +29,7 @@
 #define BUFF_SIZE	127
 #define _GUN_SOURCE
 
-#define SER_NUM		3
+#define SER_NUM		1
 
 extern Logger log;
 typedef  int FD;

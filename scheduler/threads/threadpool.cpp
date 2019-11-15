@@ -61,7 +61,7 @@ void* Threadpool::thread_funtion(void *arg){
 	/*
 	*	将其进行分开
 	*/ 
-	if(pthread_detach(pthread_self())){
+	if(pthread_detach(pthread_self()) != 0){
 		log.WriteFile(true, pthread_self() , "Threadpool::Threadpool failed in pthread_detach: ");
 	}
 	
@@ -202,10 +202,10 @@ void Threadpool::Epolldata::process_data(int fd, std::vector<Sinfo> &ser){
 			   }
 			   std::cout << "ing: " << buffer << std::endl;
 			   */
-			   //reply_http(fd);
 			   reply_http_info(fd, ser);
 		}
 	}	
+	//reply_http(fd);
 }
 
 Threadpool::Epolldata::~Epolldata(){
