@@ -30,6 +30,7 @@ $(location)$(MYLIB):scheduler.o
 	(cd sepoll;$(MAKE))
 	(cd json;$(MAKE))
 	(cd threads;$(MAKE))
+	(cd fork;$(MAKE))
 	ar qs $(location)$(MYLIB) scheduler.o
 
 main.o:main.cpp 

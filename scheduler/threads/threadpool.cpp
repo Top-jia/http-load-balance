@@ -131,6 +131,18 @@ Threadpool::Epolldata::Epolldata():sub_flags(false){
 }
 
 /*
+ *	对内部类中的方法进行实现, 主要是拆解buffer
+ * */
+void Threadpool::Epolldata::reduceBufferLen(char *buffer){
+	for(int i = 0; i < 10; i++){
+		if(buffer[i] == '*'){
+			buffer[i] = '\0';
+		}
+	}
+}
+
+
+/*
  *	对内部类中的方法进行实现
  * */
 void Threadpool::Epolldata::process_pipe_data(int fd){
@@ -141,15 +153,20 @@ void Threadpool::Epolldata::process_pipe_data(int fd){
 	 *fd中没有数据可以读取, 返回错误情况,(非阻塞模式管道)
 	 * */
 	sem.Wait();
-	if(read(fd, buffer, 20) <= 0){
-
-		sem.Post();
-		log.WriteFile(true, errno, "Threadpool::Epolldata::process_pipe_data(int fd) failure in read()");
+	int value = read(fd, buffer, 10);
+	if( value <= 0){
+		if(errno == EAGAIN){
+			log.WriteFile(false, errno, "Threadpool::Epolldata::process_pipe_data(int fd) failure in read() errno == EAGAIN");
+			sem.Post();
+			return ;
+		}
+		log.WriteFile(true, errno, "Threadpool::Epolldata::process_pipe_data(int fd) failure int read() ");
 	}
-	sem.Post();
+	reduceBufferLen(buffer);
 	int new_fd = atoi(buffer);
 	//sepoll.setnonblocking(new_fd);
 	sepoll.addfd(new_fd);
+	sem.Post();
 }
 
 /*
@@ -175,7 +192,6 @@ void Threadpool::Epolldata::process_data(int fd, std::vector<Sinfo> &ser){
 			 *	errno == EAGAIN || errno == EWOULDBLOCK
 			 * */
 			if(errno == EAGAIN || errno == EWOULDBLOCK){
-				send(fd, "ok\n", 3, 0);
 				break;
 			}
 			/*

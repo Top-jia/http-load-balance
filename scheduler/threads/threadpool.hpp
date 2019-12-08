@@ -56,6 +56,7 @@ class Threadpool{
 					 Epolldata();
 					~Epolldata();
 					void process_pipe_data(int fd);
+					void reduceBufferLen(char *buffer);
 					void close_fd(int fd);
 					void process_data(int fd, std::vector<Sinfo> &);
 

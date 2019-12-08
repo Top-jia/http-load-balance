@@ -111,3 +111,66 @@ Sat Oct 19 21:38:41 2019 errno_level: dead_err  location:Threadpool::Epolldata::
 任务:
 	@1.暂时先放下其主要的ab工具情况.
 	@2.走向libevent， http相关的方向, 加深.
+
+@1.基本找出在多线程中为什么会造成线程的崩溃?
+	主要是由于当其中:
+		主线程（run）
+				子1. 读取管道中数据1.
+				子2. 此时读取将会发生错误, errno == EAGAIN 没有处理好. 导致其中一个崩溃,整个程序都崩溃了.
+
+	主要修改的地方:
+		多线程中对管道数据的读取修改.
+测试的现象:
+
+	[root@localhost scheduler]# ab -c 10 -n 100 -r 'http://127.0.0.1:7900/index.html'
+This is ApacheBench, Version 2.3 <$Revision: 1430300 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 127.0.0.1 (be patient).....done
+
+
+Server Software:        
+Server Hostname:        127.0.0.1
+Server Port:            7900
+
+Document Path:          /index.html
+Document Length:        0 bytes
+
+Concurrency Level:      10
+Time taken for tests:   0.426 seconds
+Complete requests:      100
+Failed requests:        165
+   (Connect: 0, Receive: 109, Length: 0, Exceptions: 56)
+Write errors:           0
+Total transferred:      164 bytes
+HTML transferred:       81 bytes
+Requests per second:    234.47 [#/sec] (mean)
+Time per request:       42.649 [ms] (mean)
+Time per request:       4.265 [ms] (mean, across all concurrent requests)
+Transfer rate:          0.38 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.5      0       3
+Processing:     0    6  40.5      2     407
+Waiting:        0   44 127.0      0     404
+Total:          0    6  40.5      2     407
+
+Percentage of the requests served within a certain time (ms)
+  50%      2
+  66%      3
+  75%      3
+  80%      3
+  90%      3
+  95%      4
+  98%      6
+  99%    407
+ 100%    407 (longest request)
+
+@2.但是还是不太明显, 其中查看日志信息。
+	主线程多写如几个文件描述符的话, 对面仍无法对其进行解析操作.
+	必须对写入的文件描述符进行标示.	
+
+	修改:
+		在对管道数据的写入和读出, 进行固定操作.

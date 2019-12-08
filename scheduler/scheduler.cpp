@@ -103,6 +103,20 @@ void Scheduler::Run(){
 	}
 }
 
+/*
+ *	增加写入文件描述符的数量.
+ * */
+void Scheduler::addBufferLen(char *buffer){
+	for(int i = 0; i < 10; i++){
+		if(buffer[i] == '\0'){
+			buffer[i] = '*';
+		}
+	}
+}
+
+/*
+ *	创建连接, 并写入管道中.
+ * */
 void Scheduler::accept_link(int fd){
 	if(fd <= 0){
 		log.WriteFile(true, errno, "Scheduler::accept_link failure in args ");
@@ -113,14 +127,14 @@ void Scheduler::accept_link(int fd){
 	socklen_t cli_len = sizeof(client);
 	memset(&client, '\0', cli_len);
 	
-	sem.Wait();
 	int accept_fd = accept(fd, (struct sockaddr*)&client, &cli_len);
 	if(accept_fd == -1){
 		log.WriteFile(true, errno, "Scheduler::accept return failed ");
 	}
 	sprintf(buffer_fd, "%d", accept_fd);
-	write(sockpair[0], buffer_fd, strlen(buffer_fd));
-	sem.Post();
+	addBufferLen(buffer_fd);
+	write(sockpair[0], buffer_fd, 10);
+	//write(sockpair[0], buffer_fd, strlen(buffer_fd));
 }
 /*
 void Scheduler::Run(){

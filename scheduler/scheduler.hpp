@@ -29,7 +29,7 @@
 #define BUFF_SIZE	127
 #define _GUN_SOURCE
 
-#define SER_NUM		1
+#define SER_NUM		3
 
 extern Logger log;
 typedef  int FD;
@@ -49,6 +49,8 @@ class Scheduler{
 		FD sockpair[2];
 		/*一些处理数据的函数*/
 		void accept_link(int fd);
+		/*增加写入文件描述符的长度*/
+		void addBufferLen(char *buffer);
 	public:
 		Scheduler();
 		void CreateLink();
