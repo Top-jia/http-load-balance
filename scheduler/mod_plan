@@ -174,3 +174,39 @@ Percentage of the requests served within a certain time (ms)
 
 	修改:
 		在对管道数据的写入和读出, 进行固定操作.
+
+@3. 将修其中其中的线程异常退出的操作.
+        进行测试的结果, 仍然存在错误.
+
+@4. 首先必须进行判断是在什么地方出现的问题.
+        #1.查看日志信息, 没有什么异常的信息, 而在测试中, 服务器返回数据比较慢.
+                自己猜测, 可能是服务器出现的问题:
+               	用ab压力测试发现 服务器中: timewait状态较多, 可以默认为服务器主动段开了与客户端的连接.
+		修改, 服务器中的代码, 被动断开.
+			再次用ab压力测试:
+				Benchmarking www.baidu.com (be patient)...apr_pollset_poll: The timeout specified has expired (70007)
+			经过修正和查找相关信息:
+				得到信息: ab压力测试无法进行http1.0的相关测试.
+
+			修改成:siege测试
+				Transactions:		        1992 hits
+				Availability:		       63.95 %
+				Elapsed time:		       23.18 secs
+				Data transferred:	        0.15 MB
+				Response time:		        0.28 secs
+				Transaction rate:	       85.94 trans/sec
+				Throughput:		        0.01 MB/sec
+				Concurrency:		       24.06
+				Successful transactions:        1992
+				Failed transactions:	        1123
+				Longest transaction:	        7.18
+				Shortest transaction:	        0.00
+			测试成果, 知道进程打开的文件描述符不够.
+
+			如果将服务器修改成主动关闭的话, 将会出现服务器文件描述符不足结果.
+	                       表明测试正确.
+        #2.测试调度器, 先映射到百度地址, 或在一个固定的地址, 来测试调度器程序的正确.
+                因为找不到对应的ip地址, 并且用siege进行测试的过程在, 及其不稳定
+	着将导致不稳定, 修改线程代码, 改成轮询调用.
+		再次考虑算法相关.
+

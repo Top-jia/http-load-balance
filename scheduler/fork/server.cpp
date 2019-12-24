@@ -313,7 +313,7 @@ class Ddata{
 		read(fd_read, buffer_file, statbuff.st_size);	
 		strncpy(buffer_sum + strlen(buffer_sum), buffer_file, strlen(buffer_sum));
 		send(fd, buffer_sum, strlen(buffer_sum), 0);
-		close(fd);
+		//close(fd);
 	}
 };
 

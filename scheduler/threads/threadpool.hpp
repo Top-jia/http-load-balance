@@ -46,6 +46,7 @@ class Threadpool{
 		 *是对其中的epool数据进行分装, 数据进行处
 		 *理的一个内部处理类
 		 * */
+		public:
 			typedef 
 			class Epolldata{
 				public:	
@@ -58,11 +59,24 @@ class Threadpool{
 					void process_pipe_data(int fd);
 					void reduceBufferLen(char *buffer);
 					void close_fd(int fd);
-					void process_data(int fd, std::vector<Sinfo> &);
+					void process_data(int fd, std::vector<Sinfo> &, int );
 
 					/*处理其他信息*/
-					void reply_http_info(int fd, std::vector<Sinfo > &);
+					void reply_http_info(int fd, std::vector<Sinfo > &, int );
 			}Epdata;
 };
 
+/*
+ *	定义一个结构信息: 用来传递调度器连接客户端的信息
+ * */
+class ThreadTranInfo {
+	public:
+	Threadpool *arg;
+	int infoIndex;
+};
+
+
+/*
+ *	测试用于调度器的测试.
+ * */
 void reply_http(int fd);

@@ -18,7 +18,6 @@ Threadpool::Threadpool(int thread_num, int pipefd):pthread_num(thread_num), pipe
 	    ser_info.push_back( json.GetSer_info(i));
 	}
 	
-
 	/*
 	 *	运行服务器并连接----
 	 * */
@@ -26,11 +25,21 @@ Threadpool::Threadpool(int thread_num, int pipefd):pthread_num(thread_num), pipe
 	if(pthread_array == NULL){
 		log.WriteFile(true, 0, "Threadpool::Threadpool failed in pthread_array ");
 	}
+
+
+	/*
+ 	*
+ 	* 构建相关的地址信息
+	 * */
+	ThreadTranInfo myInfo[pthread_num];
+
 	/*
 	 *	创建多个线程
 	 * */
 	for(int i = 0; i < pthread_num; i++){
-		if(pthread_create(pthread_array+i, NULL, run, (void*)this) !=  0){
+		myInfo[i].arg = this;
+		myInfo[i].infoIndex = i;
+		if(pthread_create(pthread_array+i, NULL, run, (void*)&myInfo[i]) !=  0){
 			log.WriteFile(true, i, "Threadpool::Threadpool failed in pthread_create: ");
 		}	
 		
@@ -41,7 +50,10 @@ Threadpool::Threadpool(int thread_num, int pipefd):pthread_num(thread_num), pipe
  *	封装线程处理函数
  * */
 void* Threadpool::run(void *arg){
-	Threadpool *pool = (Threadpool*)arg;
+	//Threadpool *pool = (Threadpool*)arg;
+	//pool->thread_funtion(arg);
+	ThreadTranInfo *argInfo = (ThreadTranInfo *)arg;
+	Threadpool *pool = (Threadpool*)argInfo->arg;
 	pool->thread_funtion(arg);
 }
 
@@ -65,7 +77,10 @@ void* Threadpool::thread_funtion(void *arg){
 		log.WriteFile(true, pthread_self() , "Threadpool::Threadpool failed in pthread_detach: ");
 	}
 	
-	Threadpool *mythis = (Threadpool*)arg;
+	ThreadTranInfo *argInfo = (ThreadTranInfo *)arg;
+	Threadpool *mythis = (Threadpool*)argInfo->arg;
+	
+	//Threadpool *mythis = (Threadpool*)arg;
 	Epdata epdata;
 	epdata.sepoll.setnonblocking(mythis->pipe_read);
 	epdata.sepoll.addfd(mythis->pipe_read);
@@ -106,9 +121,9 @@ void* Threadpool::thread_funtion(void *arg){
 				 *	对客户端的数据进行处理(非阻塞模式下)
 				 * */
 				else if(epdata.events[i].events & EPOLLIN){
-					//epdata.process_data(fd, mythis->ser_info);
+					//epdata.process_data(fd, ser_info, argInfo->infoIndex);
 					/*修改成阻塞模式下进行处理*/
-					epdata.reply_http_info(fd, ser_info);
+					epdata.reply_http_info(fd, ser_info, argInfo->infoIndex);
 				}
 				/*
 				 *	其他事件的处理
@@ -181,7 +196,7 @@ void Threadpool::Epolldata::close_fd(int fd){
 /*
  *	单独测试其作为多线程来进行的测试, 不用服务器来做.
  * */
-void Threadpool::Epolldata::process_data(int fd, std::vector<Sinfo> &ser){
+void Threadpool::Epolldata::process_data(int fd, std::vector<Sinfo> &ser, int index){
 	char buffer[BUFF_SIZE];
 	memset(buffer, '\0', BUFF_SIZE);
 	while(true){
@@ -218,9 +233,10 @@ void Threadpool::Epolldata::process_data(int fd, std::vector<Sinfo> &ser){
 			   }
 			   std::cout << "ing: " << buffer << std::endl;
 			   */
-			   reply_http_info(fd, ser);
+			 // reply_http_info(fd, ser);
 		}
 	}	
+	reply_http_info(fd, ser, index);
 	//reply_http(fd);
 }
 
@@ -229,7 +245,7 @@ Threadpool::Epolldata::~Epolldata(){
 }
 
 /*封装一个返回的报文, 并选用其中一个配置的服务器信息*/
-void Threadpool::Epolldata::reply_http_info(int fd, std::vector<Sinfo> &ser){
+void Threadpool::Epolldata::reply_http_info(int fd, std::vector<Sinfo> &ser, int myIndex){
 	std::string reply = std::string(" http1.0 403 Forbidden");
 	if(fd <= 0) {
 		log.WriteFile(false, -1, "Threadpool::Epolldata::process_pipe_data(int fd, std::vector<Sinfo> &ser)::reply_http_info() in failure arg");
@@ -237,19 +253,17 @@ void Threadpool::Epolldata::reply_http_info(int fd, std::vector<Sinfo> &ser){
 		return ;
 	}
 	
-	unsigned int num = ser.size();
-	num = rand()  % num;
-	
 	int soc_cli=socket(PF_INET,SOCK_STREAM,0);
 	/* creat server sockaddr_in */
 	struct sockaddr_in ser_addr;
 	ser_addr.sin_family=PF_INET;
-	ser_addr.sin_addr.s_addr=inet_addr(ser[num].GetIP().c_str());
-	ser_addr.sin_port=htons(ser[num].GetPort());//8888 port number has no ""
-	
+	ser_addr.sin_addr.s_addr=inet_addr(ser[myIndex].GetIP().c_str());
+	ser_addr.sin_port=htons(ser[myIndex].GetPort());//8888 port number has no ""
+	//ser_addr.sin_addr.s_addr=inet_addr("61.135.169.125");
+	//ser_addr.sin_port=htons(80);//8888 port number has no ""
+
 	if(connect(soc_cli,(struct sockaddr*)&ser_addr,sizeof(ser_addr))==-1){
-		printf("connect error");
-		log.WriteFile(false, -1, "Threadpool::Epolldata::process_pipe_data(int fd, std::vector<Sinfo> &ser)::reply_http_info()::connect() in failure");
+		log.WriteFile(true, errno, "Threadpool::Epolldata::process_pipe_data(int fd, std::vector<Sinfo> &ser)::reply_http_info()::connect() in failure");
 		send(fd, reply.c_str(), reply.size(), 0);
 		return ;
 	} 
