@@ -79,7 +79,7 @@ void* Threadpool::thread_funtion(void *arg){
 	
 	ThreadTranInfo *argInfo = (ThreadTranInfo *)arg;
 	Threadpool *mythis = (Threadpool*)argInfo->arg;
-	
+	int infoIndex = argInfo->infoIndex;
 	//Threadpool *mythis = (Threadpool*)arg;
 	Epdata epdata;
 	epdata.sepoll.setnonblocking(mythis->pipe_read);
@@ -123,7 +123,7 @@ void* Threadpool::thread_funtion(void *arg){
 				else if(epdata.events[i].events & EPOLLIN){
 					//epdata.process_data(fd, ser_info, argInfo->infoIndex);
 					/*修改成阻塞模式下进行处理*/
-					epdata.reply_http_info(fd, ser_info, argInfo->infoIndex);
+					epdata.reply_http_info(fd, ser_info, infoIndex);
 				}
 				/*
 				 *	其他事件的处理
