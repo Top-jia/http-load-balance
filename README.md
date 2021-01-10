@@ -1,5 +1,26 @@
 # http-load-balance
 ## 主要目标
-![Image text](https://github.com/Top-jia/http_file_server/blob/master/testPng/abTestServer.png)
+      http_file_server项目, 主要是一个通过http协议通过网页请求请求文件的项目. 主要目的是对高性能服务器编程这本书的内容, 通过一个简单的项目来做有一个清晰的认识和了解。 
 ## 项目描述
+### 主要流程:
+      ![Image text](https://github.com/Top-jia/http_file_server/blob/master/testPng/StructHandle.png) 
+      通过客户端发送请求请求进入调度器模块, 调度器随机选取子线程服务器, 子线程接收到任务后, 通过管道数据映射的方式, 将客户端发送的数据, 映射到服务器上, http服务器解析整个过程, 并对数据进行解析, 封装成包, 发向客户端上. 
+### 测试效果:
+    ![Image text](https://github.com/Top-jia/http_file_server/blob/master/testPng/Test1.png)
+    测试两分钟, 用户数为100个, 请求100次, 共计10000次请求, 成功链接数为1713个. 
+    ![Image text](https://github.com/Top-jia/http_file_server/blob/master/testPng/Test2.png)
+    测试五分钟, 用户数为1000个, 请求100次, 共计100000次请求, 总共4314成功链接数.
+### 影响原因:
+    主要是调度器CloseWait状态限制导致程序出现问题, 解决方式, 修改内核配置文件信息, 
+### 外部测试:
+      http://60.205.209.135:7900/
 ## 相关总结
+###本项目的目的:
+      本项目只是作为练习, 不作为实际用途, 没有具体的功能作用, 并且存在许多的不足. 仅作为自己的一个练习作用.
+##### 缺点(*)
+    *1.用到的http协议, 只是对程序的一个封装处理, 存在许多的不足.*
+    *2.对于调度算法,没有使用一个较好的应用.*
+    *3.代码结构上, 存在许多设计缺陷.*
+##### 优点(*)
+    *1.对自己看的书籍, 有了一个较强的认识.*
+    *2.锻炼的自己编写和设计代码的能力, 为下一次自己独立设计做了准备.*
